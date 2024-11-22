@@ -3,7 +3,7 @@
 ## 기술 스택
 - Flask: 웹 프레임워크 
 - Flask-Smorest: OpenAPI 지원 및 유효성 검사 
-- SQLAlchemy: 데이터베이스 ORM 
+- Flask-SQLAlchemy: 데이터베이스 ORM 
 - Marshmallow: 스키마 유효성 검사 
 - MariaDB: 기본 데이터베이스
 ---
@@ -60,7 +60,7 @@ Code_Test_Reminder_Server/
       "repository_name": "Code_Tests"
     }
     ```
-- [ ] Github Repo Get  
+- [x] Github Repo Get  
 `/github/repos?github_id=<github_id>&repository_name=<repository_name>`
   - 응답 예시 (성공):
   ```json
