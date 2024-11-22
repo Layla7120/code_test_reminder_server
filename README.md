@@ -34,7 +34,7 @@ Code_Test_Reminder_Server/
 ```
 
 # 구현 내용
-- [x] 사용자 GET - /users/?id=<user_id>
+- [x] 사용자 GET `/users/?id=<user_id>`
   - 응답 예시 (성공):
     ```json
     {
@@ -43,7 +43,7 @@ Code_Test_Reminder_Server/
       "repository_name": "Code_Tests"
     }
     ```
-- [x] 사용자 POST - /users/
+- [x] 사용자 POST `/users/`
   - 요청 JSON:
     ```json
     {
@@ -59,3 +59,15 @@ Code_Test_Reminder_Server/
       "repository_name": "Code_Tests"
     }
     ```
+- [ ] Github Repo Get  
+`/github/repos?github_id=<github_id>&repository_name=<repository_name>`
+  - 응답 예시 (성공):
+  ```json
+      [
+        {
+          "description": "This is an auto push repository for Baekjoon Online Judge created with [BaekjoonHub](https://github.com/BaekjoonHub/BaekjoonHub).",
+          "html_url": "https://github.com/Layla7120/Code_Tests",
+          "name": "Code_Tests"
+        }
+      ]
+  ```

@@ -63,5 +63,3 @@ def create_user(user_data):
     except IntegrityError:
         db.session.rollback()
         abort(500, description="A database error occurred while creating the user.")
-
-

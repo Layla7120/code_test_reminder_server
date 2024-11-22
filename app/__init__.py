@@ -3,6 +3,7 @@ from flask_smorest import Api
 
 from app.db import db
 from app.db.config import Config
+from app.routes.github_routes import github_bp
 
 
 def create_app():
@@ -27,5 +28,5 @@ def create_app():
     # 라우트 등록
     from app.routes.user_routes import user_bp
     api.register_blueprint(user_bp, url_prefix="/users")
-
+    api.register_blueprint(github_bp, url_prefix="/github")
     return app
