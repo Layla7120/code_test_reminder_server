@@ -22,7 +22,8 @@ Code_Test_Reminder_Server/
 │   ├── __init__.py          # 앱 팩토리 및 확장 설정
 │   ├── models.py            # SQLAlchemy 모델
 │   ├── routes/
-│   │   ├── user_routes.py   # 사용자 관련 라우트(Blueprint)
+│   │   ├── github_routes.py 
+│   │   ├── user_routes.py   
 │   ├── services/
 │   │   ├── user_service.py  # 사용자 관련 데이터베이스 로직
 ├── tests/
