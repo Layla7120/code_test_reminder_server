@@ -60,7 +60,7 @@ Code_Test_Reminder_Server/
       "repository_name": "Code_Tests"
     }
     ```
-- [x] Github Repo Get  
+- [x] GitHub Repo Get  
 `/github/repos?github_id=<github_id>&repository_name=<repository_name>`
   - 응답 예시 (성공):
   ```json
@@ -71,4 +71,33 @@ Code_Test_Reminder_Server/
           "name": "Code_Tests"
         }
       ]
+  ```
+- [x] GitHub Repo Commit Get  
+`/github/repos?github_id=<github_id>&repository_name=<repository_name>`
+  - 응답 예시 (성공):
+  ```json
+  [
+    {
+      "author": {
+        "date": "2024-11-17T06:09:42Z",
+        "email": "crispylemon7120@gmail.com",
+        "name": "Layla Oh"
+      },
+      "description": "No description",
+      "html_url": "https://github.com/Layla7120/Code_Tests/commit/6c5f4ea521875228f1cc4690ce0434d62f6dce16",
+      "message": "[D4] Title: 격자판의 숫자 이어 붙이기, Time: 603 ms, Memory: 66,288 KB -BaekjoonHub",
+      "sha": "6c5f4ea521875228f1cc4690ce0434d62f6dce16"
+    },
+    {
+      "author": {
+        "date": "2024-11-17T05:33:12Z",
+        "email": "crispylemon7120@gmail.com",
+        "name": "Layla Oh"
+      },
+      "description": "No description",
+      "html_url": "https://github.com/Layla7120/Code_Tests/commit/3f306bcac8188a2821b077a6fbea3f367614221a",
+      "message": "[D4] Title: [S/W 문제해결 기본] 4일차 - 괄호 짝짓기, Time: 133 ms, Memory: 47,556 KB -BaekjoonHub",
+      "sha": "3f306bcac8188a2821b077a6fbea3f367614221a"
+    }
+  ]
   ```
