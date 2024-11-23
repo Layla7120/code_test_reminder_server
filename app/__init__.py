@@ -3,6 +3,7 @@ from flask_smorest import Api
 
 from app.db import db
 from app.db.config import Config
+from app.routes.commit_routes import commits_bp
 from app.routes.github_routes import github_bp
 
 
@@ -29,4 +30,5 @@ def create_app():
     from app.routes.user_routes import user_bp
     api.register_blueprint(user_bp, url_prefix="/users")
     api.register_blueprint(github_bp, url_prefix="/github")
+    api.register_blueprint(commits_bp, url_prefix="/commits")
     return app
