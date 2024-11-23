@@ -85,3 +85,38 @@ Code_Test_Reminder_Server/
     }
     ```
     ![img.png](images/img.png)
+
+- [x] 데이터베이스에서 최근 7일간 커밋 내역 조회
+  - `/commits/activity?user_id=<user_id>`
+  ```json
+  {
+    "2024-11-17": {
+      "committed": true,
+      "weekday": "Sunday"
+    },
+    "2024-11-18": {
+      "committed": false,
+      "weekday": "Monday"
+    },
+    "2024-11-19": {
+      "committed": false,
+      "weekday": "Tuesday"
+    },
+    "2024-11-20": {
+      "committed": true,
+      "weekday": "Wednesday"
+    },
+    "2024-11-21": {
+      "committed": false,
+      "weekday": "Thursday"
+    },
+    "2024-11-22": {
+      "committed": false,
+      "weekday": "Friday"
+    },
+    "2024-11-23": {
+      "committed": false,
+      "weekday": "Saturday"
+    }
+  }
+  ```

@@ -1,18 +1,12 @@
-import os
-
 import requests
 from flask import abort, jsonify
-from flask.cli import load_dotenv
 from flask_smorest import Blueprint
 from marshmallow import Schema, fields
 
-load_dotenv()
+from app.constants import GITHUB_TOKEN, GITHUB_API_URL
 
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 if not GITHUB_TOKEN:
     raise ValueError("GITHUB_TOKEN error")
-
-GITHUB_API_URL = "https://api.github.com"
 
 github_bp = Blueprint('github', __name__)
 

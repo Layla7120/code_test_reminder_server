@@ -5,6 +5,7 @@ from sqlalchemy.dialects.mysql import insert
 
 from app import db
 from app.models import User, Commit
+from app.constants import COMMIT_TITLE_PATTERN, COMMIT_TITLE_PATTERN_LEVEL, COMMIT_TITLE_PATTERN_TITLE
 
 
 class CommitService:
@@ -24,14 +25,13 @@ class CommitService:
 
 
             message = commit_json['message']
-            pattern = r"\[(.*?)\] Title: (.*?), Time: (.*?), Memory: (.*?) -"
 
-            match = re.search(pattern, message)
+            match = re.search(COMMIT_TITLE_PATTERN, message)
 
             # Process only if match is found
             if match:
-                level = match.group(1)
-                title = match.group(2)
+                level = match.group(COMMIT_TITLE_PATTERN_LEVEL)
+                title = match.group(COMMIT_TITLE_PATTERN_TITLE)
                 commit_data_list.append({"commit_date": commit_date, "commit_url": commit_url,
                                          "sha": sha, "level": level, "title": title})
 
