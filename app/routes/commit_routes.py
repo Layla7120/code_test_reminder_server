@@ -1,12 +1,7 @@
-from datetime import datetime, timezone, timedelta
-
 from flask_smorest import Blueprint
 from marshmallow import Schema, fields
-from sqlalchemy import func
+from sqlalchemy.testing.entities import ComparableMixin
 
-from app import db
-from app.models import Commit
-from app.constants import ACTIVITY_DAYS, DAYS_IN_WEEK
 from app.services.commit_service import CommitService
 from app.services.github_service import GitHubService
 
@@ -47,29 +42,6 @@ def get_commit_activity(user_data):
     """Get recent 7 days of commit activity"""
 
     user_id = user_data["user_id"]
-    # Define the range: Last 7 days
-    today = datetime.now(timezone.utc).date()
-    print(today)
-    start_date = today - timedelta(days=ACTIVITY_DAYS)
-
-    # Query for commits in the date range
-    results = (
-        db.session.query(func.date(Commit.commit_date).label('commit_date'))
-        .filter(Commit.user_id == user_id, Commit.commit_date >= start_date)
-        .distinct()
-        .all()
-    )
-
-    # Extract the days with commits
-    commit_dates = {result.commit_date for result in results}
-
-    # Check activity for each day in the range
-    commit_activity = {
-        (start_date + timedelta(days=i)).isoformat(): {
-            "committed": (start_date + timedelta(days=i)) in commit_dates,
-            "weekday": (start_date + timedelta(days=i)).strftime("%A")
-        }
-        for i in range(DAYS_IN_WEEK)
-    }
+    commit_activity = CommitService.get_weekly_info(user_id)
 
     return commit_activity

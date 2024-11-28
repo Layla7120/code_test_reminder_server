@@ -10,7 +10,7 @@ from app.services.user_service import UserService
 user_bp = Blueprint('user', __name__)
 
 class UserQuerySchema(Schema):
-    id = fields.Integer(required=True, description="User ID to fetch")
+    user_id = fields.Integer(required=True, description="User ID to fetch")
 
 class UserRequestSchema(Schema):
     github_id = fields.String(required=True, description="GitHub ID of the user")
@@ -26,7 +26,7 @@ class UserResponseSchema(Schema):
 @user_bp.response(200, UserResponseSchema)
 def get_users(query_args):
     """Retrieve a user by ID"""
-    user_id = query_args['id']
+    user_id = query_args['user_id']
     if not user_id:
         abort(400, description="Missing required query parameter: id")
 
