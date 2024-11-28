@@ -1,5 +1,3 @@
-from pyexpat.errors import messages
-
 from flask import abort, jsonify
 from flask_smorest import Blueprint
 from marshmallow import Schema, fields
@@ -28,38 +26,59 @@ class GroupResponseSchema(Schema):
     group_pw = fields.String()
     member_maxCnt = fields.Integer()
 
+
 @group_bp.route('/info', methods=['GET'])
 @group_bp.arguments(GroupQuerySchema, location='query')
 @group_bp.response(200, GroupResponseSchema)
 def get_group_info(query_args):
     """Retrieve group info by ID"""
-    user_id = query_args['user_id']
-    if not user_id:
-        abort(400, description="Missing required query parameter: id")
+    user_id = query_args.get('user_id')  # Safer way to get 'user_id'
 
+    if not user_id:
+        abort(400, description="Missing required query parameter: user_id")
+
+    # Get group metadata by user_id
     group_metadata = ParticipateService.get_group_metadata_by_user_id(user_id)
     if not group_metadata:
-        abort(404, "Group not found")
+        abort(404, description="Group not found")
 
     results = []
 
-    # get all member info from each participating group
+    # Get all member info from each participating group
     for g_metadata in group_metadata:
-        result = {"group_id": g_metadata.group_id, "group_name": g_metadata.group_name, "group_commits": []}
+        result = {
+            "group_id": g_metadata.group_id,
+            "group_name": g_metadata.group_name,
+            "group_commits": []
+        }
+
+        # Initialize dictionary to hold commit info by github_id
         member_count_commits = {}
+
+        # Get member IDs by group_id
         member_ids = ParticipateService.get_member_ids_by_group_id(g_metadata.group_id)
-        for user_id in member_ids:
-            commit_infos = CommitService.count_commits_for_current_month(user_id)
+        for member_user_id in member_ids:
+            # Get commit info for the current user for the current month
+            commit_infos = CommitService.count_commits_for_current_month(member_user_id)
+
+            # Assuming commit_infos is an object with attributes, you can access them like this:
             member_count_commits[commit_infos.github_id] = {
                 "user_id": commit_infos.user_id,
                 "commit_count": commit_infos.commit_count
             }
-            result["group_commits"].append(tuple(commit_infos))
+
+            # Append commit info to the group's result
+            result["group_commits"].append({
+                "github_id": commit_infos.github_id,
+                "user_id": commit_infos.user_id,
+                "commit_count": commit_infos.commit_count
+            })
+
+        # Add this group's result to the final list
         results.append(result)
 
-    return jsonify(tuple(results)), 200
-
-    abort(404, description="Group Info not found")
+    # Return the results as a JSON list, not a tuple
+    return jsonify(results), 200
 
 @group_bp.route('/', methods=['POST'])
 @group_bp.arguments(GroupRequestSchema, location='json')
