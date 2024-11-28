@@ -4,7 +4,6 @@ from marshmallow import Schema, fields
 from sqlalchemy.exc import IntegrityError
 
 from app import db
-from app.models import User
 from app.services.user_service import UserService
 
 user_bp = Blueprint('user', __name__)
@@ -47,7 +46,7 @@ def get_users(query_args):
 def create_user(user_data):
     """Create a new user"""
     # Check if the github_id already exists
-    existing_user = User.query.filter_by(github_id=user_data['github_id']).first()
+    existing_user = UserService.get_user_by_github_id(user_data['github_id'])
     if existing_user:
         abort(409, description=f"User with github_id '{user_data['github_id']}' already exists.")
 

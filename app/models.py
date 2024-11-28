@@ -14,7 +14,7 @@ class User(db.Model):
     # Relationships
     commits = db.relationship('Commit', back_populates='user', cascade="all, delete-orphan")
     groups = db.relationship('Group', back_populates='user', cascade="all, delete-orphan")
-    participations = db.relationship('Participate', back_populates='user', cascade="all, delete-orphan")
+    participation = db.relationship('Participate', back_populates='user', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(user_id={self.user_id}, github_id={self.github_id}, repository_name={self.repository_name}, active={self.active})>"
@@ -42,7 +42,7 @@ class Group(db.Model):
     __tablename__ = 'Group'
 
     group_id = db.Column(db.Integer, primary_key=True, autoincrement=True, nullable=False)
-    group_name = db.Column(db.String(255), nullable=False)
+    group_name = db.Column(db.String(255), nullable=False, unique=True)
     group_pw = db.Column(db.String(255), nullable=True)
     member_maxCnt = db.Column(db.Integer, nullable=True, default=30)
     created_at = db.Column(db.TIMESTAMP, nullable=False, server_default=text("current_timestamp()"))
@@ -64,7 +64,7 @@ class Participate(db.Model):
 
     # Relationships
     group = db.relationship('Group', back_populates='participants')
-    user = db.relationship('User', back_populates='participations')
+    user = db.relationship('User', back_populates='participation')
 
     def __repr__(self):
         return f"<Participate(group_id={self.group_id}, user_id={self.user_id})>"

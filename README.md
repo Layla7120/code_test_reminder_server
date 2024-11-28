@@ -24,10 +24,13 @@ Code_Test_Reminder_Server/
 │   ├── routes/
 │   │   ├── commit_routes.py
 │   │   ├── github_routes.py 
+│   │   ├── group_routes.py  
 │   │   ├── user_routes.py   
 │   ├── services/            # 데이터베이스 로직들
 │   │   ├── commit_service.py 
 │   │   ├── github_service.py  
+│   │   ├── group_service.py  
+│   │   ├── participate_service.py  
 │   │   ├── user_service.py  
 ├── tests/
 │   ├── test_user.py         # API 단위 테스트
@@ -56,7 +59,7 @@ Code_Test_Reminder_Server/
       "repository_name": "Code_Tests"
     }
     ```
-    - 응답 예시 (성공):
+  - 응답 예시 (성공):
     ```json
     {
       "user_id": 1,
@@ -119,4 +122,67 @@ Code_Test_Reminder_Server/
       "weekday": "Saturday"
     }
   }
+  ```
+
+- [x] Create Group POST `/group/`
+  - 요청 JSON
+  ```json
+  {
+    "group_name": "코테2",
+    "group_pw": "1234",
+    "member_maxCnt": 5,
+    "owner_user_id": 9
+  }
+  ```
+  - 응답 예시 (성공):
+  ```json
+  {
+    "group_name": "코테2",
+    "member_maxCnt": 5
+  }
+  ```
+  
+- [x] user_id 를 이용해 소속된 group member 데이터 가져오기
+  - `/group/info?user_id=<user_id>`
+  ```json
+  [
+    {
+      "group_commits": [
+        {
+          "commit_count": 9,
+          "github_id": "Layla7120",
+          "user_id": 9
+        },
+        {
+          "commit_count": 5,
+          "github_id": "dangeunii",
+          "user_id": 14
+        }
+      ],
+      "group_id": 4,
+      "group_name": "코테"
+    }
+  ]
+  ```
+- [x] user_id, group_name 으로 group 에 추가 POST
+  - `/group/member`
+  ```json
+     [
+    {
+      "group_commits": [
+        {
+          "commit_count": 9,
+          "github_id": "Layla7120",
+          "user_id": 9
+        },
+        {
+          "commit_count": 5,
+          "github_id": "dangeunii",
+          "user_id": 14
+        }
+      ],
+      "group_id": 4,
+      "group_name": "코테"
+    }
+  ]
   ```
