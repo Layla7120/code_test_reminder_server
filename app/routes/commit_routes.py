@@ -1,33 +1,36 @@
+from flask import jsonify
 from flask_smorest import Blueprint
 from marshmallow import Schema, fields
-from sqlalchemy.testing.entities import ComparableMixin
 
 from app.services.commit_service import CommitService
-from app.services.github_service import GitHubService
 
-commits_bp = Blueprint('commits', __name__)
+commits_bp = Blueprint('Commits', __name__)
 
-class CommitsRequestSchema(Schema):
+class CommitSchema(Schema):
+    """Schema for individual commit."""
+    author = fields.Dict(required=True, description="Author information including date, email, and name.")
+    description = fields.String(required=False, description="Commit description.")
+    html_url = fields.String(required=True, description="URL of the commit.")
+    sha = fields.String(required=True, description="SHA hash of the commit.")
+    message = fields.String(required=True, description="Commit message.")
+
+class StoreCommitsRequestSchema(Schema):
+    """Schema for storing commits."""
     user_id = fields.Integer(required=True, description="User ID to fetch")
-    github_id = fields.String(required=True, description="GitHub ID of the user")
-    repository_name = fields.String(required=True, description="Repository name of the user")
+    commits = fields.List(fields.Nested(CommitSchema), required=True, description="List of commits to store.")
 
 class CommitActivityRequestSchema(Schema):
     user_id = fields.Integer(required=True, description="User ID to fetch")
 
-@commits_bp.route('/', methods=['GET'])
-@commits_bp.arguments(CommitsRequestSchema, location='query')
+@commits_bp.route('/', methods=['POST'])
+@commits_bp.arguments(StoreCommitsRequestSchema, location='json')
 @commits_bp.response(200)
-def get_commits(user_data):
-    """ Fetch commits from GitHub and store them in the database."""
-    github_id = user_data['github_id']
-    repository_name = user_data['repository_name']
-    user_id = user_data['user_id']
+def store_commits(query_arg):
+    """Store commits in the database."""
+    user_id = query_arg['user_id']
+    commits = query_arg['commits']
 
-    # Step 1: Fetch commits from GitHub
-    commits = GitHubService.fetch_commits_from_github(github_id, repository_name)
-
-    # Step 2: Store commits in the database
+    # Call the service to insert new commits
     result = CommitService.insert_new_commits(user_id, commits)
 
     return {
@@ -40,8 +43,7 @@ def get_commits(user_data):
 @commits_bp.response(200)
 def get_commit_activity(user_data):
     """Get recent 7 days of commit activity"""
-
     user_id = user_data["user_id"]
     commit_activity = CommitService.get_weekly_info(user_id)
 
-    return commit_activity
+    return jsonify(commit_activity)

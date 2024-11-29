@@ -1,5 +1,7 @@
 from app import db, bcrypt
+from app.error_handler import generate_error
 from app.models import Group
+
 
 class GroupService:
     """Service class for managing Group-related operations."""
@@ -7,32 +9,66 @@ class GroupService:
     # ----- Group Retrieval Methods -----
     @staticmethod
     def get_group_by_name(group_name):
-        """Retrieve group details by group ID."""
-        return Group.query.get(group_name)
+        """
+        Retrieve group details by group name.
+
+        Args:
+            group_name (str): Name of the group.
+
+        Returns:
+            Group: Group object if found, else None.
+        """
+        return Group.query.filter_by(group_name=group_name).first()
 
     @staticmethod
     def get_group_by_id(group_id):
-        """Alias for getting group details by ID."""
+        """
+        Retrieve group details by group ID.
+
+        Args:
+            group_id (int): ID of the group.
+
+        Returns:
+            Group: Group object if found, else None.
+        """
         return Group.query.get(group_id)
 
     @staticmethod
     def search_group_name_starts_with(prefix):
-        """Search groups with names starting with a given prefix."""
-        group_list = Group.query.filter(Group.group_name.startswith(prefix)).all()
-        result = [
+        """
+        Search for groups whose names start with a given prefix.
+
+        Args:
+            prefix (str): Prefix for the group name.
+
+        Returns:
+            list[dict]: List of groups with group details.
+        """
+        groups = Group.query.filter(Group.group_name.startswith(prefix)).all()
+        return [
             {
                 "group_id": group.group_id,
                 "group_name": group.group_name,
                 "group_pw": group.group_pw
             }
-            for group in group_list
+            for group in groups
         ]
-        return result
 
     # ----- Group Creation and Deletion -----
     @staticmethod
     def create_group(group_name, group_pw, member_max_cnt, group_owner_id):
-        """Create a new group."""
+        """
+        Create a new group.
+
+        Args:
+            group_name (str): Name of the group.
+            group_pw (str): Encrypted password of the group.
+            member_max_cnt (int): Maximum number of members allowed in the group.
+            group_owner_id (int): ID of the group owner.
+
+        Returns:
+            Group: Newly created group.
+        """
         new_group = Group(
             group_name=group_name,
             group_pw=group_pw,
@@ -46,30 +82,72 @@ class GroupService:
     # ----- Group Counter Management -----
     @staticmethod
     def increment_group_counter(group_id):
-        """Increment the member counter for a group."""
+        """
+        Increment the member counter for a group.
+
+        Args:
+            group_id (int): ID of the group.
+
+        Returns:
+            int: Updated member counter value.
+
+        Raises:
+            ValueError: If the group does not exist.
+        """
         group = Group.query.get(group_id)
-        if group:
-            group.member_counter += 1
-            db.session.commit()
-            return group.member_counter
-        raise ValueError(f"Group with ID {group_id} not found.")
+        if not group:
+            generate_error(404, f"Group with ID {group_id} not found.")
+        group.member_counter += 1
+        db.session.commit()
+        return group.member_counter
 
     @staticmethod
     def decrement_group_counter(group_id):
-        """Decrement the member counter for a group."""
-        group = Group.query.get(group_id)
-        if group:
-            group.member_counter -= 1
-            db.session.commit()
-            return group.member_counter
-        raise ValueError(f"Group with ID {group_id} not found.")
+        """
+        Decrement the member counter for a group.
 
+        Args:
+            group_id (int): ID of the group.
+
+        Returns:
+            int: Updated member counter value.
+
+        Raises:
+            ValueError: If the group does not exist.
+        """
+        group = Group.query.get(group_id)
+        if not group:
+            generate_error(404, f"Group with ID {group_id} not found.")
+        group.member_counter -= 1
+        db.session.commit()
+        return group.member_counter
+
+    # ----- Group Validation -----
     @staticmethod
     def validate_password(group, provided_password):
+        """
+        Validate the group password.
+
+        Args:
+            group (Group): Group object.
+            provided_password (str): Password to validate.
+
+        Raises:
+            generate_error: If the password is incorrect.
+        """
         if not bcrypt.check_password_hash(group.group_pw, provided_password):
             generate_error(403, "Password is incorrect.")
 
     @staticmethod
     def check_group_limit(group):
-        if group.member_counter + 1 > group.member_maxCnt:
+        """
+        Check if the group has reached its member limit.
+
+        Args:
+            group (Group): Group object.
+
+        Raises:
+            generate_error: If the group is already full.
+        """
+        if group.member_counter >= group.member_maxCnt:
             generate_error(409, "Group is already full.")

@@ -11,7 +11,7 @@
 API의 자세한 스펙은 Swagger UI를 통해 확인할 수 있습니다.
 
 Swagger URL
-- Swagger UI: http://127.0.0.1:5000/docs/swagger-ui
+- Swagger UI: /docs/swagger-ui
 
 --- 
 ## 프로젝트 구조
@@ -21,6 +21,9 @@ Code_Test_Reminder_Server/
 ├── app/
 │   ├── __init__.py          # 앱 팩토리 및 확장 설정
 │   ├── models.py            # SQLAlchemy 모델
+│   ├── constants.py         
+│   ├── extensions.py        # bcrypt
+│   ├── error_handler.py     
 │   ├── routes/
 │   │   ├── commit_routes.py
 │   │   ├── github_routes.py 
@@ -34,15 +37,20 @@ Code_Test_Reminder_Server/
 │   │   ├── user_service.py  
 ├── tests/
 │   ├── test_user.py         # API 단위 테스트
+├── images/                   # README용 images   
 ├── config.py                
 ├── run.py                   # 애플리케이션 실행 엔트리 포인트
-├── requirements.txt         
-├── README.md   
-├── images                   # README용 images             
+├── requirements.txt    
+├── Dockerfile     
+├── README.md      
 ```
+---
+# API 명세서
 
-# 구현 내용
-- [x] 사용자 GET `/users/?id=<user_id>`
+## User
+
+- [x] [GET] 사용자 정보 가져오기 
+  - `/users/?id=<user_id>`
   - 응답 예시 (성공):
     ```json
     {
@@ -51,7 +59,8 @@ Code_Test_Reminder_Server/
       "repository_name": "Code_Tests"
     }
     ```
-- [x] 사용자 POST `/users/`
+- [x] [POST] 사용자 생성하기
+  - `/users/`
   - 요청 JSON:
     ```json
     {
@@ -67,9 +76,11 @@ Code_Test_Reminder_Server/
       "repository_name": "Code_Tests"
     }
     ```
-- [x] GitHub Repo Get
+    
+## Github
+- [x] [GET] GitHub Repo 확인 및 정보 가져오기
   - `/github/repos?github_id=<github_id>&repository_name=<repository_name>`
-    - 응답 예시 (성공):
+  - 응답 예시 (성공):
     ```json
         [
           {
@@ -79,110 +90,145 @@ Code_Test_Reminder_Server/
           }
         ]
     ```
-- [x] Github 에서 Commit 내역을 받아와, 중복이 아닐 경우 Commit DB 에 insert
+- [x] [GET] Github 에서 Commit 내역을 받아오기
   - `/commits/?user_id=<user_id>&github_id=<github_id>&repository_name=<repository_name>`
+  - 응답 예시 (성공):
+    ```json
+    [
+      {
+        "author": {
+          "date": "2024-11-17T06:09:42Z",
+          "email": "crispylemon7120@gmail.com",
+          "name": "Layla Oh"
+        },
+        "description": "No description",
+        "html_url": "https://github.com/Layla7120/Code_Tests/commit/...",
+        "message": "[D4] Title: 격자판의 숫자 이어 붙이기, Time: 603 ms, Memory: 66,288 KB -BaekjoonHub",
+        "sha": "..."
+      } 
+    ]
+    ```
+
+## Commits
+- [x] [POST] Commit 내역을 database에 저장하기
+  - `/commits/`
+  - 응답 예시 (성공):
     ```json
     {
-      "inserted_commits": 28,
-      "message": "Successfully inserted 28 new commits."
+      "fetched_commits": 9,
+      "message": "Successfully updated 9 commits."
     }
     ```
-    ![img.png](images/img.png)
-
-- [x] 데이터베이스에서 최근 7일간 커밋 내역 조회
-  - `/commits/activity?user_id=<user_id>`
-  ```json
-  {
-    "2024-11-17": {
-      "committed": true,
-      "weekday": "Sunday"
-    },
-    "2024-11-18": {
-      "committed": false,
-      "weekday": "Monday"
-    },
-    "2024-11-19": {
-      "committed": false,
-      "weekday": "Tuesday"
-    },
-    "2024-11-20": {
-      "committed": true,
-      "weekday": "Wednesday"
-    },
-    "2024-11-21": {
-      "committed": false,
-      "weekday": "Thursday"
-    },
-    "2024-11-22": {
-      "committed": false,
-      "weekday": "Friday"
-    },
-    "2024-11-23": {
-      "committed": false,
-      "weekday": "Saturday"
-    }
-  }
-  ```
-
-- [x] Create Group POST `/group/`
-  - 요청 JSON
-  ```json
-  {
-    "group_name": "코테2",
-    "group_pw": "1234",
-    "member_maxCnt": 5,
-    "owner_user_id": 9
-  }
-  ```
-  - 응답 예시 (성공):
-  ```json
-  {
-    "group_name": "코테2",
-    "member_maxCnt": 5
-  }
-  ```
   
-- [x] user_id 를 이용해 소속된 group member 데이터 가져오기
+- [x] [GET] 데이터베이스에서 최근 7일간 커밋 내역 조회
+  - `/commits/activity?user_id=<user_id>`
+  - 응답 예시 (성공):
+    ```json
+      {
+        "2024-11-17": {
+          "committed": true,
+          "weekday": "Sunday"
+        },
+        "2024-11-18": {
+          "committed": false,
+          "weekday": "Monday"
+        },
+        "2024-11-19": {
+          "committed": false,
+          "weekday": "Tuesday"
+        },
+        "2024-11-20": {
+          "committed": true,
+          "weekday": "Wednesday"
+        },
+        "2024-11-21": {
+          "committed": false,
+          "weekday": "Thursday"
+        },
+        "2024-11-22": {
+          "committed": false,
+          "weekday": "Friday"
+        },
+        "2024-11-23": {
+          "committed": false,
+          "weekday": "Saturday"
+        }
+      }
+      ```
+
+## GROUP 
+
+- [x] [GET] User_id 로 Group info 가져오기 - 푼 문제에 따라 sort
   - `/group/info?user_id=<user_id>`
-  ```json
-  [
+  - 응답 예시 (성공):
+    ```json
+    [
+      {
+        "group_commits": [
+          [
+            {
+              "commit_count": 9,
+              "github_id": "Layla7120",
+              "user_id": 16
+            },
+            {
+              "commit_count": 5,
+              "github_id": "dangeunii",
+              "user_id": 18
+            }
+          ]
+        ],
+        "group_id": 15,
+        "group_name": "코테"
+      }
+    ]
+    ```
+- [x] [POST] Create Group 
+  - `/group/`
+  - 요청 JSON:
+    ```json
     {
-      "group_commits": [
-        {
-          "commit_count": 9,
-          "github_id": "Layla7120",
-          "user_id": 9
-        },
-        {
-          "commit_count": 5,
-          "github_id": "dangeunii",
-          "user_id": 14
-        }
-      ],
-      "group_id": 4,
-      "group_name": "코테"
+      "group_name": "코테2",
+      "group_pw": "1234",
+      "member_maxCnt": 5,
+      "owner_user_id": 9
     }
-  ]
-  ```
-- [x] user_id, group_name 으로 group 에 추가 POST
+    ```
+  - 응답 예시 (성공):
+    ```json
+    {
+      "group_name": "코테2",
+      "member_maxCnt": 5
+    }
+    ```
+
+- [x] [POST] Group 에 member 추가
   - `/group/member`
-  ```json
-     [
+  - 요청 JSON:
+    ```json
     {
-      "group_commits": [
-        {
-          "commit_count": 9,
-          "github_id": "Layla7120",
-          "user_id": 9
-        },
-        {
-          "commit_count": 5,
-          "github_id": "dangeunii",
-          "user_id": 14
-        }
-      ],
-      "group_id": 4,
-      "group_name": "코테"
+    "user_id": 17,
+    "group_id": 15,
+    "group_pw": "1234"
     }
-  ]
-  ```
+    ```
+  - 응답 예시 (성공):
+    ```json
+    {
+    "group_name": "코테",
+    "user_id": 17
+    }
+    ```
+    
+- [x] [GET] Group name 으로 Group 검색하기
+  - `/group/search?group_name='코'` 
+  - 응답 예시 (성공):
+    ```json
+    [
+      {
+      "group_id": 15,
+      "group_name": "코테",
+      "group_pw": "$2b$12$sRu7krVeWXvEKnHbeDpBF.hL6/Y6FjOMmIORa8Jrl2sxNxyYWXNaK"
+      }
+    ]
+    ```

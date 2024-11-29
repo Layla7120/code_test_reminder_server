@@ -11,7 +11,7 @@ from app.services.participate_service import ParticipateService
 from app.services.user_service import UserService
 from app.extensions import bcrypt
 
-group_bp = Blueprint('group', __name__)
+group_bp = Blueprint('Group', __name__)
 
 # ----- SCHEMAS -----
 class GroupQuerySchema(Schema):
@@ -47,7 +47,7 @@ class GroupResponseSchema(Schema):
 @group_bp.response(200, GroupResponseSchema)
 @handle_errors
 def get_group_info(query_args):
-    """Retrieve group info by user ID."""
+    """Retrieve group info by user ID. - sorted by number of commits"""
     user_id = query_args['user_id']
 
     group_metadata = ParticipateService.get_group_metadata_by_user_id(user_id)
@@ -63,14 +63,8 @@ def get_group_info(query_args):
         }
 
         member_ids = ParticipateService.get_member_ids_by_group_id(g_metadata.group_id)
-        for member_user_id in member_ids:
-            commit_infos = CommitService.count_commits_for_current_month(member_user_id)
-            group_data["group_commits"].append({
-                "github_id": commit_infos.github_id,
-                "user_id": commit_infos.user_id,
-                "commit_count": commit_infos.commit_count
-            })
-
+        commit_infos = CommitService.count_commits_for_current_month(member_ids)
+        group_data["group_commits"].append(commit_infos)
         results.append(group_data)
 
     return jsonify(results)
