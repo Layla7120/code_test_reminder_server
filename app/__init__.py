@@ -1,14 +1,16 @@
+import os
+
 from flask import Flask
 from flask_smorest import Api
 
 from app.db import db
 from app.db.config import Config
+from app.extensions import bcrypt
 
 from app.routes.user_routes import user_bp
 from app.routes.commit_routes import commits_bp
 from app.routes.github_routes import github_bp
 from app.routes.group_routes import group_bp
-
 
 def create_app():
     app = Flask(__name__)
@@ -28,6 +30,12 @@ def create_app():
 
     # Initialize extensions
     db.init_app(app)
+
+    # Configure your app (if needed)
+    app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
+
+    # Initialize bcrypt with the app
+    bcrypt.init_app(app)
 
     # 라우트 등록
     api.register_blueprint(user_bp, url_prefix="/users")

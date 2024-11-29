@@ -44,7 +44,8 @@ class Group(db.Model):
     group_id = db.Column(db.Integer, primary_key=True, autoincrement=True, nullable=False)
     group_name = db.Column(db.String(255), nullable=False, unique=True)
     group_pw = db.Column(db.String(255), nullable=True)
-    member_maxCnt = db.Column(db.Integer, nullable=True, default=30)
+    member_maxCnt = db.Column(db.Integer, default=5)
+    member_counter = db.Column(db.Integer, default=0)
     created_at = db.Column(db.TIMESTAMP, nullable=False, server_default=text("current_timestamp()"))
     owner = db.Column(db.Integer, db.ForeignKey('Users.user_id', onupdate="NO ACTION"), nullable=False)
 
