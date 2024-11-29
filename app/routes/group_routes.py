@@ -47,7 +47,7 @@ class GroupResponseSchema(Schema):
 @group_bp.response(200, GroupResponseSchema)
 @handle_errors
 def get_group_info(query_args):
-    """Retrieve group info by user ID. - sorted by number of commits"""
+    """Retrieve group info by user ID."""
     user_id = query_args['user_id']
 
     group_metadata = ParticipateService.get_group_metadata_by_user_id(user_id)
@@ -131,6 +131,7 @@ def search_group(query_args):
     """Search for groups by name."""
     group_name = query_args['group_name']
     group_list = GroupService.search_group_name_starts_with(group_name)
+    print(group_list)
     if not group_list:
         generate_error(404, "Group not found")
-    return group_list
+    return jsonify(group_list)

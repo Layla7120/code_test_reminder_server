@@ -49,7 +49,9 @@ class GroupService:
             {
                 "group_id": group.group_id,
                 "group_name": group.group_name,
-                "group_pw": group.group_pw
+                "group_pw": group.group_pw,
+                "member_maxCnt": group.member_maxCnt,
+                "member_counter": group.member_counter
             }
             for group in groups
         ]

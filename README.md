@@ -158,7 +158,7 @@ Code_Test_Reminder_Server/
 
 ## GROUP 
 
-- [x] [GET] User_id 로 Group info 가져오기 - 푼 문제에 따라 sort
+- [x] [GET] User_id 로 Group info 가져오기
   - `/group/info?user_id=<user_id>`
   - 응답 예시 (성공):
     ```json
@@ -168,12 +168,16 @@ Code_Test_Reminder_Server/
           [
             {
               "commit_count": 9,
+              "difference_from_prev": null,
               "github_id": "Layla7120",
+              "rank": 1,
               "user_id": 16
             },
             {
               "commit_count": 5,
+              "difference_from_prev": 4,
               "github_id": "dangeunii",
+              "rank": 2,
               "user_id": 18
             }
           ]
@@ -182,7 +186,7 @@ Code_Test_Reminder_Server/
         "group_name": "코테"
       }
     ]
-    ```
+      ```
 - [x] [POST] Create Group 
   - `/group/`
   - 요청 JSON:
@@ -226,9 +230,11 @@ Code_Test_Reminder_Server/
     ```json
     [
       {
-      "group_id": 15,
-      "group_name": "코테",
-      "group_pw": "$2b$12$sRu7krVeWXvEKnHbeDpBF.hL6/Y6FjOMmIORa8Jrl2sxNxyYWXNaK"
+        "group_id": 15,
+        "group_name": "코테",
+        "group_pw": "$2b$12$sRu7krVeWXvEKnHbeDpBF.hL6/Y6FjOMmIORa8Jrl2sxNxyYWXNaK",
+        "member_counter": 3,
+        "member_maxCnt": 5
       }
     ]
-    ```
+      ```

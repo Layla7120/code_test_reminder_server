@@ -2,7 +2,7 @@ import re
 from datetime import datetime, timezone, timedelta
 
 from sqlalchemy.dialects.mysql import insert
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, desc
 
 from app.constants import ACTIVITY_DAYS, DAYS_IN_WEEK
 from app import db
@@ -137,7 +137,13 @@ class CommitService:
             db.session.query(
                 User.user_id,
                 User.github_id,
-                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count')  # Use COALESCE to handle NULLs
+                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),  # Use COALESCE to handle NULLs
+                func.rank().over(
+                    order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))  # Rank by commit count descending
+                ).label('rank'),
+                ( func.lag(func.count(Commit.commit_id)).over(order_by=desc(func.count(Commit.commit_id)))
+                  - func.count(Commit.commit_id)
+                ).label("difference_from_prev"),
             )
             .outerjoin(Commit, User.user_id == Commit.user_id)  # Perform a LEFT OUTER JOIN
             .filter(
@@ -148,18 +154,16 @@ class CommitService:
             .group_by(User.user_id, User.github_id)  # Group by user fields
             .all()
         )
-        print(member_ids, query_results)
-        response_result = sorted(
-            [
-                {
-                    "github_id": result.github_id,
-                    "user_id": result.user_id,
-                    "commit_count": result.commit_count
-                }
-                for result in query_results
-            ],
-            key=lambda x: x["commit_count"],  # Sort by commit_count
-            reverse=True  # Sort in descending order (highest commit count first)
-        )
+
+        response_result = [
+            {
+                "github_id": result.github_id,
+                "user_id": result.user_id,
+                "commit_count": result.commit_count,
+                "rank": result.rank,
+                "difference_from_prev": result.difference_from_prev
+            }
+            for result in query_results
+        ]
 
         return response_result
