@@ -14,11 +14,13 @@ class UserQuerySchema(Schema):
     user_id = fields.Integer(required=True, description="User ID to fetch")
 
 class UserRequestSchema(Schema):
+    nick_name = fields.String(required=True, description="Nickname of the user")
     github_id = fields.String(required=True, description="GitHub ID of the user")
     repository_name = fields.String(required=True, description="Repository name of the user")
 
 class UserResponseSchema(Schema):
     user_id = fields.Integer(description="User ID")
+    nick_name = fields.String(required=True, description="Nickname of the user")
     github_id = fields.String(description="GitHub ID of the user")
     repository_name = fields.String(description="Repository name of the user")
 
@@ -48,6 +50,7 @@ def get_users(query_args):
 
     return {
         "user_id": user.user_id,
+        "nick_name": user.nick_name,
         "github_id": user.github_id,
         "repository_name": user.repository_name
     }
@@ -76,9 +79,10 @@ def create_user(user_data):
 
     try:
         # Create a new user
-        user = UserService.create_user(user_data['github_id'], user_data['repository_name'])
+        user = UserService.create_user(user_data['nick_name'], user_data['github_id'], user_data['repository_name'])
         return {
             "user_id": user.user_id,
+            "nick_name": user.nick_name,
             "github_id": user.github_id,
             "repository_name": user.repository_name
         }
@@ -86,3 +90,6 @@ def create_user(user_data):
     except IntegrityError:
         db.session.rollback()
         generate_error(500, "A database error occurred while creating the user.")
+
+# TODO: user github repository 변경, user 닉네임 변경 sql update 할 때 둘 중 하나만 받아도 업데이트 하게
+#  - UPDATE if nickName != null || nickName != "" if repository != null 또는 repository != ""

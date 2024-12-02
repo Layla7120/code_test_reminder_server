@@ -12,8 +12,8 @@ class UserService:
         return User.query.get(github_id)
 
     @staticmethod
-    def create_user(github_id, repository_name):
-        new_user = User(github_id=github_id, repository_name=repository_name)
+    def create_user(nick_name, github_id, repository_name):
+        new_user = User(nick_name=nick_name, github_id=github_id, repository_name=repository_name)
         db.session.add(new_user)
         db.session.commit()
         return new_user

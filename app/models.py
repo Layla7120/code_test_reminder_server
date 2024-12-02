@@ -1,11 +1,13 @@
 from sqlalchemy import text
 from app import db
 
+# TODO: 닉네임 추가
 class User(db.Model):
     __tablename__ = 'Users'
 
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True, nullable=False)
     github_id = db.Column(db.String(255), nullable=False, unique=True)
+    nick_name = db.Column(db.String(255), nullable=False, unique=True)
     repository_name = db.Column(db.String(255), nullable=False)
     active = db.Column(db.String(1), nullable=False, default='y')
     createdAt = db.Column(db.TIMESTAMP, nullable=True, server_default=text("current_timestamp()"))
@@ -38,6 +40,8 @@ class Commit(db.Model):
         return f"<Commit(commit_id={self.commit_id}, title={self.title}, level={self.level}, user_id={self.user_id})>"
 
 
+# TODO: Owner 내역 삭제 하기
+# TODO: Public, Private(비밀번호 사용) 칼럼 추가 및 로직 추가
 class Group(db.Model):
     __tablename__ = 'Group'
 
