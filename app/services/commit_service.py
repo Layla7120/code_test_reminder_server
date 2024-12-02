@@ -1,10 +1,10 @@
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy import func, extract, desc
 
-from app.constants import ACTIVITY_DAYS, DAYS_IN_WEEK
+from app.constants import ACTIVITY_DAYS, DAYS_IN_WEEK, TODAY
 from app import db
 from app.models import User, Commit
 from app.constants import (
@@ -17,16 +17,61 @@ from app.constants import (
 class CommitService:
     """Service class for managing commits-related operations."""
 
-    # ----- User Commit Retrieval -----
     @staticmethod
-    def get_user_commits(user_id):
-        """Retrieve commits for a specific user."""
-        return User.query.get(user_id)
+    def _get_top_30_commits_query():
+        """
+        Private method to build the query for top 30 commits ranking.
+        Returns a SQLAlchemy query object.
+        """
+        subquery = (
+            db.session.query(
+                User.user_id,
+                User.nick_name,
+                User.github_id,
+                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),  # Use COALESCE to handle NULLs
+                func.rank().over(
+                    order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))  # Rank by commit count descending
+                ).label('rank'),
+                (func.coalesce(func.lag(func.count(Commit.commit_id))
+                               .over(order_by=desc(func.count(Commit.commit_id))), 0)
+                 - func.coalesce(func.count(Commit.commit_id), 0)).label("difference_from_prev"),
+            )
+            .outerjoin(Commit, User.user_id == Commit.user_id)  # LEFT OUTER JOIN
+            .filter(
+                extract('month', Commit.commit_date) == TODAY.month,
+                extract('year', Commit.commit_date) == TODAY.year
+            )
+            .group_by(User.user_id, User.nick_name, User.github_id)
+            .subquery()
+        )
 
+        top_30_query = (
+            db.session.query(subquery)
+            .order_by(subquery.c.rank)
+            .limit(30)
+        )
+
+        return top_30_query
+
+    # ----- Rank View - Total Commit Retrieval -----
     @staticmethod
-    def get_user_monthly_commit_count(user_id):
-        """Retrieve monthly commit count for a specific user."""
-        return User.query.get(user_id)
+    def get_info_for_rank_view():
+
+        query_results = CommitService._get_top_30_commits_query.all()
+
+        response_result = [
+            {
+                "github_id": result.github_id,
+                "nick_name": result.nick_name,
+                "user_id": result.user_id,
+                "commit_count": result.commit_count,
+                "rank": result.rank,
+                "difference_from_prev": result.difference_from_prev
+            }
+            for result in query_results
+        ]
+
+        return response_result
 
     # ----- Commit Insertion -----
     @staticmethod
@@ -98,9 +143,7 @@ class CommitService:
         Returns:
             dict: Dictionary of activity status for the past week.
         """
-        # Define the date range
-        today = datetime.now(timezone.utc).date()
-        start_date = today - timedelta(days=ACTIVITY_DAYS)
+        start_date = TODAY - timedelta(days=ACTIVITY_DAYS)
 
         # Query for distinct commit dates in the range
         results = (
@@ -129,13 +172,11 @@ class CommitService:
         """
         Count the number of commits made by a user in the current month.
         """
-        # Get today's date
-        today = datetime.now(timezone.utc)
-
         # Query to count commits in the current month
         query_results = (
             db.session.query(
                 User.user_id,
+                User.nick_name,
                 User.github_id,
                 func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),  # Use COALESCE to handle NULLs
                 func.rank().over(
@@ -148,8 +189,8 @@ class CommitService:
             .outerjoin(Commit, User.user_id == Commit.user_id)  # Perform a LEFT OUTER JOIN
             .filter(
                 User.user_id.in_(member_ids),  # Filter by member IDs
-                extract('month', Commit.commit_date) == today.month,
-                extract('year', Commit.commit_date) == today.year
+                extract('month', Commit.commit_date) == TODAY.month,
+                extract('year', Commit.commit_date) == TODAY.year
             )
             .group_by(User.user_id, User.github_id)  # Group by user fields
             .all()
@@ -158,6 +199,7 @@ class CommitService:
         response_result = [
             {
                 "github_id": result.github_id,
+                "nick_name": result.nick_name,
                 "user_id": result.user_id,
                 "commit_count": result.commit_count,
                 "rank": result.rank,

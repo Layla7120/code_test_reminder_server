@@ -6,6 +6,7 @@ from flask_smorest import Api
 from app.db import db
 from app.db.config import Config
 from app.extensions import bcrypt
+from app.routes.rank_routes import rank_bp
 
 from app.routes.user_routes import user_bp
 from app.routes.commit_routes import commits_bp
@@ -42,5 +43,6 @@ def create_app():
     api.register_blueprint(github_bp, url_prefix="/github")
     api.register_blueprint(commits_bp, url_prefix="/commits")
     api.register_blueprint(group_bp, url_prefix="/group")
+    api.register_blueprint(rank_bp, url_prefix="/rank")
 
     return app

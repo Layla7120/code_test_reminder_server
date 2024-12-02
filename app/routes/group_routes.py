@@ -36,9 +36,10 @@ class SearchRequestSchema(Schema):
     group_name = fields.String(required=True, description="Name of the group")
 
 class GroupResponseSchema(Schema):
+    group_id = fields.String()
     group_name = fields.String()
     group_pw = fields.String()
-    member_maxCnt = fields.Integer()
+    member_maxCnt = fields.Integer(description="Max Count of members per group")
 
 # ----- ROUTES -----
 
@@ -91,6 +92,7 @@ def create_group(query_args):
     ParticipateService.assign_group(group.group_id, query_args['owner_user_id'])
 
     return {
+        "group_id": group.group_id,
         "group_name": group.group_name,
         "member_maxCnt": group.member_maxCnt,
         "owner_user_id": group.owner
