@@ -70,7 +70,7 @@ def get_group_info(query_args):
 
     return jsonify(results)
 
-@group_bp.route('/', methods=['POST'])
+@group_bp.route('', methods=['POST'])
 @group_bp.arguments(CreateGroupRequestSchema, location='json')
 @group_bp.response(201, GroupResponseSchema)
 @handle_errors

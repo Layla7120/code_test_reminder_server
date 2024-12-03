@@ -22,7 +22,7 @@ class StoreCommitsRequestSchema(Schema):
 class CommitActivityRequestSchema(Schema):
     user_id = fields.Integer(required=True, description="User ID to fetch")
 
-@commits_bp.route('/', methods=['POST'])
+@commits_bp.route('', methods=['POST'])
 @commits_bp.arguments(StoreCommitsRequestSchema, location='json')
 @commits_bp.response(200)
 def store_commits(query_arg):

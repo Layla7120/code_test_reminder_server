@@ -57,7 +57,7 @@ class CommitService:
     @staticmethod
     def get_info_for_rank_view():
 
-        query_results = CommitService._get_top_30_commits_query.all()
+        query_results = CommitService._get_top_30_commits_query()
 
         response_result = [
             {

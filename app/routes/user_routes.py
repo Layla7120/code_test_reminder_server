@@ -26,7 +26,7 @@ class UserResponseSchema(Schema):
 
 # ----- Routes -----
 
-@user_bp.route('/', methods=['GET'])
+@user_bp.route('', methods=['GET'])
 @user_bp.arguments(UserQuerySchema, location='query')
 @user_bp.response(200, UserResponseSchema)
 def get_users(query_args):
@@ -56,7 +56,7 @@ def get_users(query_args):
     }
 
 
-@user_bp.route('/', methods=['POST'])
+@user_bp.route('', methods=['POST'])
 @user_bp.arguments(UserRequestSchema, location='json')
 @user_bp.response(201, UserResponseSchema)
 def create_user(user_data):

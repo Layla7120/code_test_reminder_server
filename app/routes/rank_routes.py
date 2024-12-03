@@ -24,7 +24,7 @@ class RankResponseSchema(Schema):
 
 # ----- ROUTES -----
 
-@rank_bp.route('/', methods=['GET'])
+@rank_bp.route('', methods=['GET'])
 @rank_bp.response(200, RankResponseSchema)
 @handle_errors
 def get_rank_public_info():
