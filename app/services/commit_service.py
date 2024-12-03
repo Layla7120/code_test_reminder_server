@@ -18,6 +18,21 @@ class CommitService:
     """Service class for managing commits-related operations."""
 
     @staticmethod
+    def _calculate_difference_expression(commit_count_column):
+        """
+        Creates a SQLAlchemy expression to calculate the difference between
+        the current and previous row's commit count, ensuring non-negative values.
+        """
+        return func.greatest(
+            func.coalesce(
+                func.lag(commit_count_column)
+                .over(order_by=desc(commit_count_column)),
+                0
+            ) - func.coalesce(commit_count_column, 0),
+            0  # Ensure the result is non-negative
+        )
+
+    @staticmethod
     def _get_top_30_commits_query():
         """
         Private method to build the query for top 30 commits ranking.
@@ -32,9 +47,7 @@ class CommitService:
                 func.rank().over(
                     order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))  # Rank by commit count descending
                 ).label('rank'),
-                (func.coalesce(func.lag(func.count(Commit.commit_id))
-                               .over(order_by=desc(func.count(Commit.commit_id))), 0)
-                 - func.coalesce(func.count(Commit.commit_id), 0)).label("difference_from_prev"),
+                CommitService._calculate_difference_expression(func.count(Commit.commit_id)).label("difference_from_prev"),
             )
             .outerjoin(Commit, User.user_id == Commit.user_id)  # LEFT OUTER JOIN
             .filter(
@@ -58,6 +71,43 @@ class CommitService:
     def get_info_for_rank_view():
 
         query_results = CommitService._get_top_30_commits_query()
+
+        response_result = [
+            {
+                "github_id": result.github_id,
+                "nick_name": result.nick_name,
+                "user_id": result.user_id,
+                "commit_count": result.commit_count,
+                "rank": result.rank,
+                "difference_from_prev": result.difference_from_prev
+            }
+            for result in query_results
+        ]
+
+        return response_result
+
+    @staticmethod
+    def get_user_rank(user_id):
+
+        query_results = (
+            db.session.query(
+                User.user_id,
+                User.nick_name,
+                User.github_id,
+                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),  # Use COALESCE to handle NULLs
+                func.rank().over(
+                    order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))  # Rank by commit count descending
+                ).label('rank'),
+                CommitService._calculate_difference_expression(func.count(Commit.commit_id)).label("difference_from_prev"),
+            )
+            .outerjoin(Commit, User.user_id == Commit.user_id)  # LEFT OUTER JOIN
+            .filter(
+                User.user_id == user_id,
+                extract('month', Commit.commit_date) == TODAY.month,
+                extract('year', Commit.commit_date) == TODAY.year
+            )
+            .group_by(User.user_id, User.nick_name, User.github_id)
+        )
 
         response_result = [
             {
@@ -182,9 +232,7 @@ class CommitService:
                 func.rank().over(
                     order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))  # Rank by commit count descending
                 ).label('rank'),
-                ( func.lag(func.count(Commit.commit_id)).over(order_by=desc(func.count(Commit.commit_id)))
-                  - func.count(Commit.commit_id)
-                ).label("difference_from_prev"),
+                CommitService._calculate_difference_expression(func.count(Commit.commit_id)).label("difference_from_prev"),
             )
             .outerjoin(Commit, User.user_id == Commit.user_id)  # Perform a LEFT OUTER JOIN
             .filter(
