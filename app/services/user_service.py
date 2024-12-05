@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy.dialects.mysql import insert
 
 from app import db
@@ -19,6 +21,8 @@ class UserService:
         user = db.session.query(User).filter_by(nick_name=nick_name).first()
 
         if user:
+            user.updatedAt = datetime.utcnow()
+            db.session.commit()
             return user  # 이미 존재하는 경우 반환
 
         # 없으면 새로 생성

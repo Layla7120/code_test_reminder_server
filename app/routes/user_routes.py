@@ -106,9 +106,11 @@ def check_user(query_args):
 
     user = UserService.get_user_by_nick_name(nick_name)
     if not user:
-        return {"message": f"New user {nick_name} can be added" }, 200
+        print(f"New user {nick_name} can be added")
+        return True
     elif user.github_id == github_id and user.repository_name == repository_name:
-        return {"message": f"{nick_name} is logging in"}, 200
+        print(f"{nick_name} is logging in")
+        return True
     elif user:
         return generate_error(404, "Nick name already used.")
 

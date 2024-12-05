@@ -205,13 +205,14 @@ class CommitService:
         commit_dates = {result.commit_date for result in results}
 
         # Map commit activity for each day
-        commit_activity = {
-            (start_date + timedelta(days=i)).isoformat(): {
+        commit_activity = [
+            {
+                "date": (start_date + timedelta(days=i)).isoformat(),
                 "committed": (start_date + timedelta(days=i)) in commit_dates,
                 "weekday": (start_date + timedelta(days=i)).strftime("%A")
             }
             for i in range(DAYS_IN_WEEK)
-        }
+        ]
 
         return commit_activity
 

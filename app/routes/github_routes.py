@@ -22,11 +22,6 @@ class CommitsRequestSchema(Schema):
     github_id = fields.String(required=True, description="GitHub ID of the user")
     repository_name = fields.String(required=True, description="Repository name of the user")
 
-class RepoResponseSchema(Schema):
-    name = fields.String(description="Repository name")
-    html_url = fields.String(description="Repository URL")
-    description = fields.String(description="Repository description")
-
 class CommitResponseSchema(Schema):
     sha = fields.String(description="The SHA hash of the commit")
     author = fields.Dict(description="Author details of the commit", keys=fields.String(), values=fields.String())
@@ -38,7 +33,7 @@ class CommitResponseSchema(Schema):
 
 @github_bp.route('/repo', methods=['GET'])
 @github_bp.arguments(RepoRequestSchema, location='query')
-@github_bp.response(200, RepoResponseSchema(many=True))
+@github_bp.response(200)
 def get_repo(query_args):
     """
     Retrieve details of a GitHub repository.
@@ -68,15 +63,9 @@ def get_repo(query_args):
 
         # Parse and filter response
         repo = response.json()
-        filtered_repo = [
-            {
-                "name": repo.get("name", "Unknown"),
-                "html_url": repo.get("html_url", "Unknown"),
-                "description": repo.get("description", "No description"),
-            }
-        ]
-
-        return filtered_repo
+        if repo:
+            return True
+        return False
 
     except requests.RequestException as e:
         generate_error(500, f"An error occurred during the request: {str(e)}")
