@@ -1,3 +1,5 @@
+from sqlalchemy.dialects.mysql import insert
+
 from app import db
 from app.models import User
 
@@ -8,14 +10,26 @@ class UserService:
         return User.query.get(user_id)
 
     @staticmethod
-    def get_user_by_github_id(github_id):
-        return User.query.get(github_id)
+    def get_user_by_nick_name(nick_name):
+        return db.session.query(User).filter_by(nick_name=nick_name).first()
 
     @staticmethod
-    def create_user(nick_name, github_id, repository_name):
-        new_user = User(nick_name=nick_name, github_id=github_id, repository_name=repository_name)
+    def create_or_get_user(nick_name, github_id, repository_name):
+        # 기존 데이터 조회
+        user = db.session.query(User).filter_by(nick_name=nick_name).first()
+
+        if user:
+            return user  # 이미 존재하는 경우 반환
+
+        # 없으면 새로 생성
+        new_user = User(
+            nick_name=nick_name,
+            github_id=github_id,
+            repository_name=repository_name
+        )
         db.session.add(new_user)
         db.session.commit()
+
         return new_user
 
     @staticmethod

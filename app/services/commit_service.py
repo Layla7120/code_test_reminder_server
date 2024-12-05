@@ -107,19 +107,17 @@ class CommitService:
                 extract('year', Commit.commit_date) == TODAY.year
             )
             .group_by(User.user_id, User.nick_name, User.github_id)
+            .first()
         )
 
-        response_result = [
-            {
-                "github_id": result.github_id,
-                "nick_name": result.nick_name,
-                "user_id": result.user_id,
-                "commit_count": result.commit_count,
-                "rank": result.rank,
-                "difference_from_prev": result.difference_from_prev
-            }
-            for result in query_results
-        ]
+        response_result = {
+            "github_id": query_results.github_id,
+            "nick_name": query_results.nick_name,
+            "user_id": query_results.user_id,
+            "commit_count": query_results.commit_count,
+            "rank": query_results.rank,
+            "difference_from_prev": query_results.difference_from_prev
+        }
 
         return response_result
 

@@ -35,7 +35,6 @@ def get_rank_public_info():
     """Retrieve Overall Ranking"""
 
     commit_infos = CommitService.get_info_for_rank_view()
-
     return jsonify(commit_infos)
 
 

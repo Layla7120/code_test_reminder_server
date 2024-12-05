@@ -23,6 +23,7 @@ class UserResponseSchema(Schema):
     nick_name = fields.String(required=True, description="Nickname of the user")
     github_id = fields.String(description="GitHub ID of the user")
     repository_name = fields.String(description="Repository name of the user")
+    createdAt = fields.DateTime(description="Creation timestamp of the user")
 
 # ----- Routes -----
 
@@ -59,12 +60,12 @@ def get_users(query_args):
 @user_bp.route('', methods=['POST'])
 @user_bp.arguments(UserRequestSchema, location='json')
 @user_bp.response(201, UserResponseSchema)
-def create_user(user_data):
+def login_user(user_data):
     """
-    Create a new user.
+    Login the user - create if not in db
 
     Args:
-        user_data (dict): Request data containing `github_id` and `repository_name`.
+        user_data (dict): Request data containing `nick_name`, `github_id` and `repository_name`.
 
     Returns:
         dict: Newly created user details.
@@ -72,24 +73,44 @@ def create_user(user_data):
     Raises:
         generate_error: If a user with the given GitHub ID already exists or a database error occurs.
     """
-    # Check if the GitHub ID already exists
-    existing_user = UserService.get_user_by_github_id(user_data['github_id'])
-    if existing_user:
-        generate_error(409, f"User with GitHub ID '{user_data['github_id']}' already exists.")
-
     try:
-        # Create a new user
-        user = UserService.create_user(user_data['nick_name'], user_data['github_id'], user_data['repository_name'])
-        return {
-            "user_id": user.user_id,
-            "nick_name": user.nick_name,
-            "github_id": user.github_id,
-            "repository_name": user.repository_name
-        }
+        if not user_data:
+            return {"error": "No data received"}, 400
+
+        user = UserService.create_or_get_user(user_data['nick_name'], user_data['github_id'], user_data['repository_name'])
+        return user
 
     except IntegrityError:
         db.session.rollback()
         generate_error(500, "A database error occurred while creating the user.")
+
+@user_bp.route('/nick_name', methods=['GET'])
+@user_bp.arguments(UserRequestSchema, location='query')
+@user_bp.response(200, description="Nick name can be used")
+def check_user(query_args):
+    """
+    Check if a nick_name is already used.
+
+    Args:
+        query_args (dict): Query arguments containing the `nick_name`.
+
+    Returns:
+        Response 200 if the nick_name can be used.
+
+    Raises:
+        generate_error: If the nick_name is already used.
+    """
+    nick_name = query_args['nick_name']
+    github_id = query_args['github_id']
+    repository_name = query_args['repository_name']
+
+    user = UserService.get_user_by_nick_name(nick_name)
+    if not user:
+        return {"message": f"New user {nick_name} can be added" }, 200
+    elif user.github_id == github_id and user.repository_name == repository_name:
+        return {"message": f"{nick_name} is logging in"}, 200
+    elif user:
+        return generate_error(404, "Nick name already used.")
 
 # TODO: user github repository 변경, user 닉네임 변경 sql update 할 때 둘 중 하나만 받아도 업데이트 하게
 #  - UPDATE if nickName != null || nickName != "" if repository != null 또는 repository != ""
