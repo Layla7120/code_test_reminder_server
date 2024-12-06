@@ -33,7 +33,6 @@ def store_commits(query_arg):
     github_id = query_arg['github_id']
     repository_name = query_arg['repository_name']
 
-    print(query_arg)
     # Call fetch commits and insert new commits
     commits = GitHubService.fetch_commits_from_github(github_id, repository_name)
     CommitService.insert_new_commits(user_id, commits)

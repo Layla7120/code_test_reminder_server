@@ -89,27 +89,43 @@ class CommitService:
     @staticmethod
     def get_user_rank(user_id):
 
-        query_results = (
+        rank_subquery = (
             db.session.query(
                 User.user_id,
                 User.nick_name,
                 User.github_id,
-                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),  # Use COALESCE to handle NULLs
+                func.coalesce(func.count(Commit.commit_id), 0).label("commit_count"),
                 func.rank().over(
                     order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))  # Rank by commit count descending
                 ).label('rank'),
-                CommitService._calculate_difference_expression(func.count(Commit.commit_id)).label("difference_from_prev"),
+                CommitService._calculate_difference_expression(func.count(Commit.commit_id)).label(
+                    "difference_from_prev")
             )
-            .outerjoin(Commit, User.user_id == Commit.user_id)  # LEFT OUTER JOIN
+            .outerjoin(Commit, User.user_id == Commit.user_id)  # LEFT OUTER JOIN to include users with no commits
             .filter(
-                User.user_id == user_id,
-                extract('month', Commit.commit_date) == TODAY.month,
-                extract('year', Commit.commit_date) == TODAY.year
+                extract("month", Commit.commit_date) == TODAY.month,
+                extract("year", Commit.commit_date) == TODAY.year
             )
             .group_by(User.user_id, User.nick_name, User.github_id)
-            .first()
+            .subquery()
         )
 
+        query_results = (
+            db.session.query(
+                rank_subquery.c.user_id,
+                rank_subquery.c.nick_name,
+                rank_subquery.c.github_id,
+                rank_subquery.c.commit_count,
+                rank_subquery.c.rank,
+                rank_subquery.c.difference_from_prev
+            )
+            .filter(rank_subquery.c.user_id == user_id)  # Filter for the specific user
+            .first()
+        )
+        print(user_id, query_results)
+        if query_results is None:
+            return None
+        
         response_result = {
             "github_id": query_results.github_id,
             "nick_name": query_results.nick_name,
