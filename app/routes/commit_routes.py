@@ -36,8 +36,21 @@ def store_commits(query_arg):
     # Call fetch commits and insert new commits
     commits = GitHubService.fetch_commits_from_github(github_id, repository_name)
     CommitService.insert_new_commits(user_id, commits)
-    commit_activity = CommitService.get_weekly_info(user_id)
-    return jsonify(commit_activity)
+
+
+    week_activity = CommitService.get_weekly_info(user_id)
+    recent_commits = CommitService.get_recent_commits(user_id)
+    commit_level_counts = CommitService.get_commit_level_counts(user_id)
+    rank_info = CommitService.get_user_rank(user_id)
+
+    result = {
+        "week_activity": week_activity,
+        "recent_commits": recent_commits,
+        "commit_level_counts": commit_level_counts,
+        "rank_info": rank_info
+    }
+
+    return jsonify(result)
 
 @commits_bp.route('/activity', methods=['GET'])
 @commits_bp.arguments(CommitActivityRequestSchema, location='query')
@@ -47,4 +60,26 @@ def get_commit_activity(user_data):
     user_id = user_data["user_id"]
     commit_activity = CommitService.get_weekly_info(user_id)
 
+    return jsonify(commit_activity)
+
+@commits_bp.route('', methods=['GET'])
+@commits_bp.arguments(CommitActivityRequestSchema, location='query')
+@commits_bp.response(200)
+def get_recent_commit(user_data):
+    """Retrieve recent 10 commit activity of a user."""
+    user_id = user_data["user_id"]
+    commit_activity = CommitService.get_recent_commits(user_id)
+
+    print(commit_activity)
+    return jsonify(commit_activity)
+
+@commits_bp.route('/level', methods=['GET'])
+@commits_bp.arguments(CommitActivityRequestSchema, location='query')
+@commits_bp.response(200)
+def get_commit_level_ratio(user_data):
+    """Retrieve recent 10 commit activity of a user."""
+    user_id = user_data["user_id"]
+    commit_activity = CommitService.get_commit_level_ratio(user_id)
+
+    print(commit_activity)
     return jsonify(commit_activity)

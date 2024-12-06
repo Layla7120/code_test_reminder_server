@@ -125,7 +125,7 @@ class CommitService:
         print(user_id, query_results)
         if query_results is None:
             return None
-        
+
         response_result = {
             "github_id": query_results.github_id,
             "nick_name": query_results.nick_name,
@@ -136,6 +136,40 @@ class CommitService:
         }
 
         return response_result
+
+    @staticmethod
+    def get_commit_level_counts(user_id):
+        query_results = (
+            db.session.query(
+                User.user_id,
+                User.nick_name,
+                User.github_id,
+                Commit.level,
+                func.coalesce(func.count(Commit.commit_id), 0).label("commit_count")
+            )
+            .outerjoin(Commit, User.user_id == Commit.user_id)  # LEFT OUTER JOIN to include users with no commits
+            .filter(User.user_id == user_id)
+            .group_by(User.user_id, User.nick_name, User.github_id, Commit.level)
+            .all()
+        )
+
+        if query_results is None:
+            return None
+
+        print(query_results)
+
+        format_resultc = [
+            {
+                "github_id": result.github_id,
+                "nick_name": result.nick_name,
+                "user_id": result.user_id,
+                "commit_count": result.commit_count,
+                "level": result.level
+            }
+            for result in query_results
+        ]
+
+        return format_resultc
 
     # ----- Commit Insertion -----
     @staticmethod
@@ -267,6 +301,45 @@ class CommitService:
                 "commit_count": result.commit_count,
                 "rank": result.rank,
                 "difference_from_prev": result.difference_from_prev
+            }
+            for result in query_results
+        ]
+
+        return response_result
+
+    @staticmethod
+    def get_recent_commits(user_id):
+        """
+        Retrieve recent 10 commit activity of a user.
+
+        Args:
+            user_id (int): ID of the user.
+
+        Returns:
+            dict: Dictionary of activity status for the past week.
+        """
+
+        # Query for distinct commit dates in the range
+        query_results = (
+            db.session.query(
+                Commit.commit_date,
+                Commit.commit_url,
+                Commit.level,
+                Commit.title
+            )
+            .filter(Commit.user_id == user_id)
+            .order_by(Commit.commit_date.desc())
+            .distinct()
+            .limit(10)
+            .all()
+        )
+
+        response_result = [
+            {
+                "commit_date": result.commit_date,
+                "commit_url": result.commit_url,
+                "level": result.level,
+                "title": result.title
             }
             for result in query_results
         ]
