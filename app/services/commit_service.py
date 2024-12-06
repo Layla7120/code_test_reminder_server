@@ -122,7 +122,7 @@ class CommitService:
             .filter(rank_subquery.c.user_id == user_id)  # Filter for the specific user
             .first()
         )
-        print(user_id, query_results)
+
         if query_results is None:
             return None
 
@@ -155,8 +155,6 @@ class CommitService:
 
         if query_results is None:
             return None
-
-        print(query_results)
 
         format_resultc = [
             {
@@ -253,12 +251,12 @@ class CommitService:
 
         # Extract the days with commits
         commit_dates = {result.commit_date for result in results}
-
+        print(user_id, start_date, commit_dates)
         # Map commit activity for each day
         commit_activity = [
             {
                 "date": (start_date + timedelta(days=i)).isoformat(),
-                "committed": (start_date + timedelta(days=i)) in commit_dates,
+                "committed": (start_date + timedelta(days=i)).date() in commit_dates,
                 "weekday": (start_date + timedelta(days=i)).strftime("%A")
             }
             for i in range(DAYS_IN_WEEK)
