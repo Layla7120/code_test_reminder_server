@@ -2,7 +2,7 @@ import re
 from datetime import datetime, timedelta
 
 from sqlalchemy.dialects.mysql import insert
-from sqlalchemy import func, extract, desc
+from sqlalchemy import func, extract, desc, case, Integer, cast
 
 from app.constants import ACTIVITY_DAYS, DAYS_IN_WEEK, TODAY
 from app import db
@@ -38,6 +38,12 @@ class CommitService:
         Private method to build the query for top 30 commits ranking.
         Returns a SQLAlchemy query object.
         """
+        # Get the current date to calculate the current and previous months
+        current_year = TODAY.year
+        current_month = TODAY.month
+        previous_month = current_month - 1 if current_month > 1 else 12
+        previous_year = current_year if current_month > 1 else current_year - 1
+
         subquery = (
             db.session.query(
                 User.user_id,
@@ -47,12 +53,34 @@ class CommitService:
                 func.rank().over(
                     order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))  # Rank by commit count descending
                 ).label('rank'),
-                CommitService._calculate_difference_expression(func.count(Commit.commit_id)).label("difference_from_prev"),
+                # Calculate the last month's commit count using a conditional sum
+                cast(
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (
+                                    (
+                                        (extract('month', Commit.commit_date) == previous_month) &
+                                        (extract('year', Commit.commit_date) == previous_year),
+                                        1
+                                    )
+                                ),
+                                else_=0
+                            )
+                        ), 0
+                    ), Integer
+                ).label('last_month_commit_count')
             )
             .outerjoin(Commit, User.user_id == Commit.user_id)  # LEFT OUTER JOIN
             .filter(
-                extract('month', Commit.commit_date) == TODAY.month,
-                extract('year', Commit.commit_date) == TODAY.year
+                (
+                        (extract('month', Commit.commit_date) == current_month) &
+                        (extract('year', Commit.commit_date) == current_year)
+                ) |
+                (
+                        (extract('month', Commit.commit_date) == previous_month) &
+                        (extract('year', Commit.commit_date) == previous_year)
+                )
             )
             .group_by(User.user_id, User.nick_name, User.github_id)
             .subquery()
@@ -69,8 +97,10 @@ class CommitService:
     # ----- Rank View - Total Commit Retrieval -----
     @staticmethod
     def get_info_for_rank_view():
-
         query_results = CommitService._get_top_30_commits_query()
+
+        if query_results is None:
+            return None
 
         response_result = [
             {
@@ -79,7 +109,7 @@ class CommitService:
                 "user_id": result.user_id,
                 "commit_count": result.commit_count,
                 "rank": result.rank,
-                "difference_from_prev": result.difference_from_prev
+                "last_month_commit_count": result.last_month_commit_count
             }
             for result in query_results
         ]

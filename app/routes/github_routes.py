@@ -57,9 +57,9 @@ def get_repo(query_args):
 
         # Handle response codes
         if response.status_code == 404:
-            generate_error(404, f"GitHub repository '{repository_name}' of '{github_id}' not found.")
+            return generate_error(404, f"GitHub repository '{repository_name}' of '{github_id}' not found.")
         elif response.status_code != 200:
-            generate_error(500, "An error occurred while calling the GitHub API.")
+            return generate_error(500, "An error occurred while calling the GitHub API.")
 
         # Parse and filter response
         repo = response.json()
@@ -68,7 +68,7 @@ def get_repo(query_args):
         return False
 
     except requests.RequestException as e:
-        generate_error(500, f"An error occurred during the request: {str(e)}")
+        return generate_error(500, f"An error occurred during the request: {str(e)}")
 
 @github_bp.route('/commits', methods=['GET'])
 @github_bp.arguments(CommitsRequestSchema, location='query')
@@ -91,4 +91,4 @@ def get_commits(query_args):
         commits = GitHubService.fetch_commits_from_github(github_id, repository_name)
         return commits
     except Exception as e:
-        generate_error(500, f"An error occurred while fetching commits: {str(e)}")
+        return generate_error(500, f"An error occurred while fetching commits: {str(e)}")

@@ -1,12 +1,12 @@
 from functools import wraps
 
-from flask import abort
+from flask import abort, jsonify, make_response
 from sqlalchemy.exc import IntegrityError
 
 from app import db
 
 def generate_error(status_code, description):
-    abort(status_code, description=description)
+    return make_response(jsonify({"error": description}), status_code)
 
 def handle_errors(f):
     @wraps(f)
@@ -15,7 +15,7 @@ def handle_errors(f):
             return f(*args, **kwargs)
         except IntegrityError:
             db.session.rollback()
-            generate_error(500, "A database error occurred.")
+            return generate_error(500, "A database error occurred.")
         except Exception as e:
-            generate_error(500, f"An unexpected error occurred: {str(e)}")
+            return generate_error(500, f"An unexpected error occurred: {str(e)}")
     return decorated_function

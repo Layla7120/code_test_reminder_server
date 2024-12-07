@@ -98,7 +98,7 @@ class GroupService:
         """
         group = Group.query.get(group_id)
         if not group:
-            generate_error(404, f"Group with ID {group_id} not found.")
+            return generate_error(404, f"Group with ID {group_id} not found.")
         group.member_counter += 1
         db.session.commit()
         return group.member_counter
@@ -119,7 +119,7 @@ class GroupService:
         """
         group = Group.query.get(group_id)
         if not group:
-            generate_error(404, f"Group with ID {group_id} not found.")
+            return generate_error(404, f"Group with ID {group_id} not found.")
         group.member_counter -= 1
         db.session.commit()
         return group.member_counter
@@ -138,7 +138,7 @@ class GroupService:
             generate_error: If the password is incorrect.
         """
         if not bcrypt.check_password_hash(group.group_pw, provided_password):
-            generate_error(403, "Password is incorrect.")
+            return generate_error(403, "Password is incorrect.")
 
     @staticmethod
     def check_group_limit(group):
@@ -152,4 +152,4 @@ class GroupService:
             generate_error: If the group is already full.
         """
         if group.member_counter >= group.member_maxCnt:
-            generate_error(409, "Group is already full.")
+            return generate_error(409, "Group is already full.")

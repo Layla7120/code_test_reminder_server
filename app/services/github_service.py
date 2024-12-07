@@ -36,9 +36,9 @@ class GitHubService:
         """
         # Validate input
         if not github_id:
-            generate_error(400, "Error: 'github_id' parameter is required.")
+            return generate_error(400, "Error: 'github_id' parameter is required.")
         if not repository_name:
-            generate_error(400, "Error: 'repository_name' parameter is required.")
+            return generate_error(400, "Error: 'repository_name' parameter is required.")
 
         # Construct URL and headers
         url = f"{GITHUB_API_URL}/repos/{github_id}/{repository_name}/commits"
@@ -50,17 +50,17 @@ class GitHubService:
 
             # Handle API errors
             if response.status_code == 404:
-                generate_error(404, f"GitHub repository '{github_id}/{repository_name}' not found.")
+                return generate_error(404, f"GitHub repository '{github_id}/{repository_name}' not found.")
             elif response.status_code == 401:
-                generate_error(401, "Unauthorized: Invalid or missing GitHub token.")
+                return generate_error(401, "Unauthorized: Invalid or missing GitHub token.")
             elif response.status_code != 200:
-                generate_error(500, "An unexpected error occurred while calling the GitHub API.")
+                return generate_error(500, "An unexpected error occurred while calling the GitHub API.")
 
             # Process and filter commits
             return GitHubService._filter_commits(response.json())
 
         except requests.RequestException as e:
-            generate_error(500, f"An error occurred during the GitHub API request: {str(e)}")
+            return generate_error(500, f"An error occurred during the GitHub API request: {str(e)}")
 
     @staticmethod
     def _filter_commits(commits):

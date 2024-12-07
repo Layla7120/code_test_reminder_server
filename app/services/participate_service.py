@@ -64,6 +64,7 @@ class ParticipateService:
             .group_by(Group.group_id, Group.group_name)
             .all()
         )
+
         return results
 
     @staticmethod

@@ -53,7 +53,7 @@ def get_group_info(query_args):
 
     group_metadata = ParticipateService.get_group_metadata_by_user_id(user_id)
     if not group_metadata:
-        generate_error(404, "Group not found")
+        return generate_error(404, "Group not found")
 
     results = []
     for g_metadata in group_metadata:
@@ -77,15 +77,15 @@ def get_group_info(query_args):
 def create_group(query_args):
     """Create a new group."""
     if GroupService.get_group_by_name(query_args['group_name']):
-        generate_error(409, f"Group with name '{query_args['group_name']}' already exists.")
+        return generate_error(409, f"Group with name '{query_args['group_name']}' already exists.")
 
     owner = UserService.get_user_by_user_id(query_args['owner_user_id'])
     if not owner:
-        generate_error(404, f"User ID '{query_args['owner_user_id']}' does not exist.")
+        return generate_error(404, f"User ID '{query_args['owner_user_id']}' does not exist.")
 
     max_mem_count = query_args.get('member_maxCnt', DEFAULT_GROUP_MAX_CNT)
     if max_mem_count > 30:
-        generate_error(409, "Member_maxCnt should be lower or equal to 30.")
+        return generate_error(409, "Member_maxCnt should be lower or equal to 30.")
 
     crypt_pw = bcrypt.generate_password_hash(query_args['group_pw']).decode('utf-8')
     group = GroupService.create_group(query_args['group_name'], crypt_pw, max_mem_count, owner.user_id)
@@ -106,14 +106,14 @@ def add_member(query_args):
     """Add a member to a group."""
     user = UserService.get_user_by_user_id(query_args['user_id'])
     if not user:
-        generate_error(404, f"User ID '{query_args['user_id']}' does not exist.")
+        return generate_error(404, f"User ID '{query_args['user_id']}' does not exist.")
 
     if ParticipateService.check_if_participating(query_args['group_id'], query_args['user_id']):
-        generate_error(409, f"User ID '{query_args['user_id']}' is already a member of the group.")
+        return generate_error(409, f"User ID '{query_args['user_id']}' is already a member of the group.")
 
     group = GroupService.get_group_by_id(query_args['group_id'])
     if not group:
-        generate_error(404, f"Group ID '{query_args['group_id']}' does not exist.")
+        return generate_error(404, f"Group ID '{query_args['group_id']}' does not exist.")
 
     GroupService.check_group_limit(group)
     GroupService.validate_password(group, query_args['group_pw'])
@@ -135,5 +135,5 @@ def search_group(query_args):
     group_list = GroupService.search_group_name_starts_with(group_name)
     print(group_list)
     if not group_list:
-        generate_error(404, "Group not found")
+        return generate_error(404, "Group not found")
     return jsonify(group_list)

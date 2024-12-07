@@ -47,7 +47,7 @@ def get_users(query_args):
 
     user = UserService.get_user_by_user_id(user_id)
     if not user:
-        generate_error(404, "User not found.")
+        return generate_error(404, "User not found.")
 
     return {
         "user_id": user.user_id,
@@ -82,7 +82,7 @@ def login_user(user_data):
 
     except IntegrityError:
         db.session.rollback()
-        generate_error(500, "A database error occurred while creating the user.")
+        return generate_error(500, "A database error occurred while creating the user.")
 
 @user_bp.route('/nick_name', methods=['GET'])
 @user_bp.arguments(UserRequestSchema, location='query')
