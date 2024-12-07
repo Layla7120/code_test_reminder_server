@@ -49,11 +49,10 @@ class CommitService:
                 User.user_id,
                 User.nick_name,
                 User.github_id,
-                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),  # Use COALESCE to handle NULLs
+                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),
                 func.rank().over(
-                    order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))  # Rank by commit count descending
+                    order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))
                 ).label('rank'),
-                # Calculate the last month's commit count using a conditional sum
                 cast(
                     func.coalesce(
                         func.sum(
@@ -300,22 +299,42 @@ class CommitService:
         Count the number of commits made by a user in the current month.
         """
         # Query to count commits in the current month
+        current_year = TODAY.year
+        current_month = TODAY.month
+        previous_month = current_month - 1 if current_month > 1 else 12
+        previous_year = current_year if current_month > 1 else current_year - 1
+
         query_results = (
             db.session.query(
                 User.user_id,
                 User.nick_name,
                 User.github_id,
-                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),  # Use COALESCE to handle NULLs
+                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),
                 func.rank().over(
-                    order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))  # Rank by commit count descending
+                    order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))
                 ).label('rank'),
-                CommitService._calculate_difference_expression(func.count(Commit.commit_id)).label("difference_from_prev"),
+                cast(
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (
+                                    (
+                                        (extract('month', Commit.commit_date) == previous_month) &
+                                        (extract('year', Commit.commit_date) == previous_year),
+                                        1
+                                    )
+                                ),
+                                else_=0
+                            )
+                        ), 0
+                    ), Integer
+                ).label('last_month_commit_count')
             )
             .outerjoin(Commit, User.user_id == Commit.user_id)  # Perform a LEFT OUTER JOIN
             .filter(
                 User.user_id.in_(member_ids),  # Filter by member IDs
-                extract('month', Commit.commit_date) == TODAY.month,
-                extract('year', Commit.commit_date) == TODAY.year
+                extract('month', Commit.commit_date) == current_month,
+                extract('year', Commit.commit_date) == current_year
             )
             .group_by(User.user_id, User.github_id)  # Group by user fields
             .all()
@@ -328,7 +347,7 @@ class CommitService:
                 "user_id": result.user_id,
                 "commit_count": result.commit_count,
                 "rank": result.rank,
-                "difference_from_prev": result.difference_from_prev
+                "last_month_commit_count": result.last_month_commit_count
             }
             for result in query_results
         ]

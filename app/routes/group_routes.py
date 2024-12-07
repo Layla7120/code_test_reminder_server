@@ -65,9 +65,9 @@ def get_group_info(query_args):
 
         member_ids = ParticipateService.get_member_ids_by_group_id(g_metadata.group_id)
         commit_infos = CommitService.count_commits_for_current_month(member_ids)
-        group_data["group_commits"].append(commit_infos)
+        group_data["group_commits"] = (commit_infos)
         results.append(group_data)
-
+    print(results)
     return jsonify(results)
 
 @group_bp.route('', methods=['POST'])
