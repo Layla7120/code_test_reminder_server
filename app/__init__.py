@@ -1,10 +1,13 @@
 import os
 
-from flask import Flask
+from flask import Flask, jsonify
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_smorest import Api
 
 from app.db import db
 from app.db.config import Config
+from app.error_handler import generate_error
 from app.extensions import bcrypt
 from app.routes.rank_routes import rank_bp
 
@@ -12,6 +15,7 @@ from app.routes.user_routes import user_bp
 from app.routes.commit_routes import commits_bp
 from app.routes.github_routes import github_bp
 from app.routes.group_routes import group_bp
+
 
 def create_app():
     app = Flask(__name__)
@@ -37,6 +41,29 @@ def create_app():
 
     # Initialize bcrypt with the app
     bcrypt.init_app(app)
+
+    limiter = Limiter(
+        app = app,
+        key_func = get_remote_address,
+        default_limits=["200 per day", "5 per minute"]
+    )
+
+    @app.errorhandler(429)
+    def handle_rate_limit_error(e):
+        response = jsonify({
+            "message": "Too many requests. Please try again later.",
+            "error": "Rate Limit Exceeded",
+            "status": 429
+        })
+        response.status_code = 429
+        return response
+
+    @app.route("/")
+    def default():
+        return "default limit!"
+
+    # Optionally set default limits
+    limiter.init_app(app)
 
     # 라우트 등록
     api.register_blueprint(user_bp, url_prefix="/users")
