@@ -49,7 +49,22 @@ class CommitService:
                 User.user_id,
                 User.nick_name,
                 User.github_id,
-                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),
+                cast(
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (
+                                    (
+                                        (extract('month', Commit.commit_date) == current_month) &
+                                        (extract('year', Commit.commit_date) == current_year),
+                                        1
+                                    )
+                                ),
+                                else_=0
+                            )
+                        ), 0
+                    ), Integer
+                ).label('commit_count'),
                 func.rank().over(
                     order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))
                 ).label('rank'),
@@ -309,7 +324,22 @@ class CommitService:
                 User.user_id,
                 User.nick_name,
                 User.github_id,
-                func.coalesce(func.count(Commit.commit_id), 0).label('commit_count'),
+                cast(
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (
+                                    (
+                                        (extract('month', Commit.commit_date) == current_month) &
+                                        (extract('year', Commit.commit_date) == current_year),
+                                        1
+                                    )
+                                ),
+                                else_=0
+                            )
+                        ), 0
+                    ), Integer
+                ).label('commit_count'),
                 func.rank().over(
                     order_by=desc(func.coalesce(func.count(Commit.commit_id), 0))
                 ).label('rank'),
@@ -332,9 +362,15 @@ class CommitService:
             )
             .outerjoin(Commit, User.user_id == Commit.user_id)  # Perform a LEFT OUTER JOIN
             .filter(
-                User.user_id.in_(member_ids),  # Filter by member IDs
-                extract('month', Commit.commit_date) == current_month,
-                extract('year', Commit.commit_date) == current_year
+                User.user_id.in_(member_ids),
+                (
+                        (extract('month', Commit.commit_date) == current_month) &
+                        (extract('year', Commit.commit_date) == current_year)
+                ) |
+                (
+                        (extract('month', Commit.commit_date) == previous_month) &
+                        (extract('year', Commit.commit_date) == previous_year)
+                )
             )
             .group_by(User.user_id, User.github_id)  # Group by user fields
             .all()

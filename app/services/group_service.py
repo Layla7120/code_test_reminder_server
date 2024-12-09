@@ -1,3 +1,5 @@
+from operator import truediv
+
 from app import db, bcrypt
 from app.error_handler import generate_error
 from app.models import Group
@@ -137,8 +139,11 @@ class GroupService:
         Raises:
             generate_error: If the password is incorrect.
         """
-        if not bcrypt.check_password_hash(group.group_pw, provided_password):
-            return generate_error(403, "Password is incorrect.")
+        # if not bcrypt.check_password_hash(group.group_pw, provided_password):
+        if bcrypt.check_password_hash(group.group_pw, provided_password):
+            return True
+        else:
+            return False
 
     @staticmethod
     def check_group_limit(group):

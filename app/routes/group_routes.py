@@ -29,7 +29,7 @@ class CreateGroupRequestSchema(Schema):
 
 class AddMemberRequestSchema(Schema):
     user_id = fields.Integer(required=True, description="User ID to add")
-    group_id = fields.Integer(required=True, description="Group ID to add")
+    group_name = fields.String(required=True, description="Group ID to add")
     group_pw = fields.String(required=True, description="Group password entered by the user")
 
 class SearchRequestSchema(Schema):
@@ -104,23 +104,23 @@ def create_group(query_args):
 @handle_errors
 def add_member(query_args):
     """Add a member to a group."""
+    print(query_args)
     user = UserService.get_user_by_user_id(query_args['user_id'])
     if not user:
         return generate_error(404, f"User ID '{query_args['user_id']}' does not exist.")
 
-    if ParticipateService.check_if_participating(query_args['group_id'], query_args['user_id']):
-        return generate_error(409, f"User ID '{query_args['user_id']}' is already a member of the group.")
-
-    group = GroupService.get_group_by_id(query_args['group_id'])
+    group = GroupService.get_group_by_name(query_args['group_name'])
     if not group:
-        return generate_error(404, f"Group ID '{query_args['group_id']}' does not exist.")
+        return generate_error(404, f"Group ID '{query_args['group_name']}' does not exist.")
 
     GroupService.check_group_limit(group)
-    GroupService.validate_password(group, query_args['group_pw'])
+    if not GroupService.validate_password(group, query_args['group_pw']):
+        return generate_error(403, "Password is incorrect.")
 
     ParticipateService.assign_group(group.group_id, user.user_id)
 
     return {
+        "group_id": group.group_id,
         "group_name": group.group_name,
         "user_id": query_args['user_id']
     }
