@@ -18,29 +18,31 @@ Swagger URL
 
 ```bash 
 Code_Test_Reminder_Server/
-├── app/
-│   ├── __init__.py          # 앱 팩토리 및 확장 설정
-│   ├── models.py            # SQLAlchemy 모델
-│   ├── constants.py         
-│   ├── extensions.py        # bcrypt
-│   ├── error_handler.py     
-│   ├── routes/
-│   │   ├── commit_routes.py
-│   │   ├── github_routes.py 
-│   │   ├── group_routes.py  
-│   │   ├── user_routes.py   
-│   ├── services/            # 데이터베이스 로직들
-│   │   ├── commit_service.py 
-│   │   ├── github_service.py  
-│   │   ├── group_service.py  
-│   │   ├── participate_service.py  
-│   │   ├── user_service.py  
-├── tests/
-│   ├── test_user.py         # API 단위 테스트
-├── images/                   # README용 images   
-├── config.py                
-├── run.py                   # 애플리케이션 실행 엔트리 포인트
-├── requirements.txt    
-├── Dockerfile     
-├── README.md      
+├── Dockerfile
+├── README.md
+├── app
+│ ├── __init__.py
+│ ├── constants.py
+│ ├── db
+│ │ ├── __init__.py
+│ │ └── config.py
+│ ├── error_handler.py
+│ ├── extensions.py                  # bcrypt
+│ ├── models.py                      # SQLAlchemy 모델
+│ ├── routes
+│ │ ├── commit_routes.py
+│ │ ├── github_routes.py
+│ │ ├── group_routes.py
+│ │ ├── rank_routes.py
+│ │ └── user_routes.py
+│ └── services                       # 데이터베이스 로직들
+│     ├── commit_service.py
+│     ├── github_service.py
+│     ├── group_service.py
+│     ├── participate_service.py
+│     └── user_service.py
+├── requirements.txt
+├── run.py                           # 애플리케이션 실행 엔트리 포인트
+└── tests
+    └── test_user.py
 ```
