@@ -5,7 +5,7 @@ from sqlalchemy.dialects.mysql import insert
 from sqlalchemy import func, extract, desc, case, Integer, cast
 
 from app.constants import ACTIVITY_DAYS, DAYS_IN_WEEK, TODAY
-from app import db
+from app import db, generate_error
 from app.models import User, Commit
 from app.constants import (
     COMMIT_TITLE_PATTERN,

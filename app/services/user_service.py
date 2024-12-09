@@ -1,8 +1,9 @@
 from datetime import datetime
 
 from sqlalchemy.dialects.mysql import insert
+from sqlalchemy.exc import IntegrityError
 
-from app import db
+from app import db, generate_error
 from app.models import User
 
 
@@ -38,7 +39,19 @@ class UserService:
 
     @staticmethod
     def delete_user(user_id):
-        user = User.query.get(user_id)
-        if user:
-            db.session.delete(user)
-            db.session.commit()
+        try:
+            user = User.query.get(user_id)
+
+            if user:
+                db.session.delete(user)
+                db.session.commit()
+                print(f"User deleted {user.user_id}")
+            else:
+                print("User not found")
+
+        except IntegrityError as e:
+            db.session.rollback()  # 오류 발생 시 롤백
+            print(f"IntegrityError: {e}")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")

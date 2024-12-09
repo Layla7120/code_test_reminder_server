@@ -1,4 +1,9 @@
-from app import db
+from tokenize import group
+
+from sqlalchemy.exc import IntegrityError
+
+from app import db, generate_error
+from app.constants import TODAY
 from app.models import Group, Participate
 from app.services.group_service import GroupService
 
@@ -23,7 +28,7 @@ class ParticipateService:
             raise ValueError(f"User {user_id} is already a member of group {group_id}.")
 
         # Create and save participation record
-        new_group_user = Participate(group_id=group_id, user_id=user_id)
+        new_group_user = Participate(group_id=group_id, user_id=user_id, created_at = TODAY)
         db.session.add(new_group_user)
 
         # Increment group member counter
@@ -58,7 +63,7 @@ class ParticipateService:
             list[Group]: List of groups the user is participating in.
         """
         results = (
-            db.session.query(Group.group_id, Group.group_name)
+            db.session.query(Group)
             .join(Participate, Participate.group_id == Group.group_id)
             .filter(Participate.user_id == user_id)
             .group_by(Group.group_id, Group.group_name)
@@ -82,3 +87,73 @@ class ParticipateService:
             participant.user_id
             for participant in db.session.query(Participate).filter_by(group_id=group_id).all()
         ]
+
+    @staticmethod
+    def returnOldestMember(group_id, excluded_user_id):
+        """
+        Retrieve the oldest member
+
+        Args:
+            group_id (int): ID of the group.
+
+        Returns:
+            int: user IDs in the group.
+        """
+        return (db.session.query(Participate)
+                .filter(Participate.group_id == group_id)
+                .filter(Participate.user_id != excluded_user_id)
+                .order_by(Participate.created_at.asc())
+                .first())
+
+
+    @staticmethod
+    def handleUserDelete(user_id):
+        """
+        delete participate
+
+        Args:
+            user_id (int): ID of the User.
+
+        Returns:
+            Boolean
+        """
+        try:
+            groups = ParticipateService.get_group_metadata_by_user_id(user_id)
+            print(groups)
+            for group in groups:
+                # 혼자였다면 삭제
+                if group.member_counter == 1:
+                    GroupService.delete_group(group.group_id)
+                    continue
+
+                # group owner 였다면 새로운 owner 찾아주기
+                if group.owner == user_id:
+                    try:
+                        new_owner= ParticipateService.returnOldestMember(group_id=group.group_id, excluded_user_id=user_id)
+                        print("new_owner_id:", new_owner)  # 확인
+
+                        if new_owner is not None:
+                            print("here")
+                            group.owner = new_owner.user_id
+                            db.session.commit()
+                            print(f"Owner updated to {new_owner.user_id}")
+                        else:
+                            generate_error(404, "No valid owner found, cannot update.")
+                    except IntegrityError as e:
+                        db.session.rollback()  # 오류 발생 시 롤백
+                        print(f"IntegrityError handleUserDelete: {e}")
+                    except Exception as e:
+                        # 에러 발생 시 롤백
+                        db.session.rollback()
+                        return generate_error(500, f"Error occurred deleting participant: {e}")
+
+                GroupService.decrement_group_counter(group.group_id)
+
+        except IntegrityError as e:
+            db.session.rollback()  # 오류 발생 시 롤백
+            print(f"IntegrityError: {e}")
+
+        except Exception as e:
+            # 에러 발생 시 롤백
+            db.session.rollback()
+            return generate_error(500, f"Error occurred deleting participant: {e}")

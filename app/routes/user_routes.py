@@ -1,9 +1,13 @@
 from flask_smorest import Blueprint
 from marshmallow import Schema, fields
+from numpy.f2py.auxfuncs import throw_error
 from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.error_handler import generate_error
+from app.services.commit_service import CommitService
+from app.services.group_service import GroupService
+from app.services.participate_service import ParticipateService
 from app.services.user_service import UserService
 
 # Blueprint
@@ -116,3 +120,35 @@ def check_user(query_args):
 
 # TODO: user github repository 변경, user 닉네임 변경 sql update 할 때 둘 중 하나만 받아도 업데이트 하게
 #  - UPDATE if nickName != null || nickName != "" if repository != null 또는 repository != ""
+
+@user_bp.route('/delete', methods=['DELETE'])
+@user_bp.arguments(UserQuerySchema, location='query')
+@user_bp.response(200, description="User Deleted")
+def delete_user(query_args):
+    """
+    delete the user
+
+    Args:
+        query_args (dict): Query arguments containing the `user_id`.
+
+    Returns:
+        Response 200 if user is deleted.
+
+    Raises:
+        generate_error: If something went wrong.
+    """
+    user_id = query_args['user_id']
+
+    user = UserService.get_user_by_user_id(user_id)
+    if not user:
+        print(f"User {user.user_id} is not valid")
+        return False
+
+    try:
+        ParticipateService.handleUserDelete(user.user_id)
+        UserService.delete_user(user.user_id)
+        return True
+    except IntegrityError:
+        generate_error(400, "Cannot delete record due to foreign key constraint.")
+    except Exception as e:
+        generate_error(500, f"Internal Server Error: {str(e)}")

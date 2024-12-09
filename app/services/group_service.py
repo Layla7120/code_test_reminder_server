@@ -1,5 +1,3 @@
-from operator import truediv
-
 from app import db, bcrypt
 from app.error_handler import generate_error
 from app.models import Group
@@ -123,6 +121,7 @@ class GroupService:
         if not group:
             return generate_error(404, f"Group with ID {group_id} not found.")
         group.member_counter -= 1
+
         db.session.commit()
         return group.member_counter
 
@@ -158,3 +157,22 @@ class GroupService:
         """
         if group.member_counter >= group.member_maxCnt:
             return generate_error(409, "Group is already full.")
+
+
+    @staticmethod
+    def delete_group(group_id):
+        """
+        Delete group
+
+        Args:
+            group_id
+
+        """
+        try:
+            db.session.query(Group).filter(Group.group_id == group_id).delete()
+            db.session.commit()
+        except Exception as e:
+            # 에러 발생 시 롤백
+            db.session.rollback()
+            print(f"Error occurred: {e}")
+            return False
