@@ -78,6 +78,6 @@ def get_recent_commit(user_data):
 def get_commit_level_ratio(user_data):
     """Retrieve recent 10 commit activity of a user."""
     user_id = user_data["user_id"]
-    commit_activity = CommitService.get_commit_level_ratio(user_id)
+    commit_activity = CommitService.get_commit_level_counts(user_id)
 
     return jsonify(commit_activity)

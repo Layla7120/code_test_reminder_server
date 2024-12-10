@@ -196,7 +196,7 @@ class CommitService:
             .group_by(User.user_id, User.nick_name, User.github_id, Commit.level)
             .all()
         )
-
+        print("Query_results", query_results)
         if query_results is None:
             return None
 

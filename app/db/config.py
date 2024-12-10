@@ -1,11 +1,20 @@
+import os
+from flask.cli import load_dotenv
+
+load_dotenv()
+
 class Config:
     db = {
-        'user': 'root',
-        'password': '1234',
-        'host': 'localhost',
-        'port': 3306,
-        'database': 'code_test_app'
+        'user': os.getenv("DB_USER"),
+        'password': os.getenv("DB_PASSWORD"),
+        'host': os.getenv("DB_HOST"),
+        'database': os.getenv("DB_NAME")
     }
-    SQLALCHEMY_DATABASE_URI = f"mysql+mysqlconnector://{db['user']}:{db['password']}@" \
-             f"{db['host']}:{db['port']}/{db['database']}?charset=utf8mb4&collation=utf8mb4_general_ci"
+
+    SQLALCHEMY_DATABASE_URI = (
+        f"mysql+mysqlconnector://{db['user']}:{db['password']}@/{db['database']}"
+        f"?unix_socket={db['host']}&charset=utf8mb4&collation=utf8mb4_general_ci"
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+
