@@ -41,6 +41,11 @@ class GroupResponseSchema(Schema):
     group_pw = fields.String()
     member_maxCnt = fields.Integer(description="Max Count of members per group")
 
+class GroupResponseSchema2(Schema):
+    group_id = fields.String()
+    group_name = fields.String()
+    member_maxCnt = fields.Integer(description="Max Count of members per group")
+
 # ----- ROUTES -----
 
 @group_bp.route('/info', methods=['GET'])
@@ -72,13 +77,13 @@ def get_group_info(query_args):
 
 @group_bp.route('', methods=['POST'])
 @group_bp.arguments(CreateGroupRequestSchema, location='json')
-@group_bp.response(201, GroupResponseSchema)
+@group_bp.response(201, GroupResponseSchema2)
 @handle_errors
 def create_group(query_args):
     """Create a new group."""
     if GroupService.get_group_by_name(query_args['group_name']):
         return generate_error(409, f"Group with name '{query_args['group_name']}' already exists.")
-
+    print(query_args)
     owner = UserService.get_user_by_user_id(query_args['owner_user_id'])
     if not owner:
         return generate_error(404, f"User ID '{query_args['owner_user_id']}' does not exist.")
@@ -137,3 +142,14 @@ def search_group(query_args):
     if not group_list:
         return generate_error(404, "Group not found")
     return jsonify(group_list)
+
+@group_bp.route('/check/name', methods=['GET'])
+@group_bp.arguments(SearchRequestSchema, location='query')
+@group_bp.response(200)
+@handle_errors
+def group_name_check(query_args):
+    """Check if group name is available"""
+    group_name = query_args['group_name']
+
+    return GroupService.check_group_name(group_name)
+
