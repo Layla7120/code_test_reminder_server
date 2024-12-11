@@ -1,10 +1,8 @@
-from tokenize import group
-
 from sqlalchemy.exc import IntegrityError
 
 from app import db, generate_error
 from app.constants import TODAY
-from app.models import Group, Participate
+from app.models import Group, Participate, User
 from app.services.group_service import GroupService
 
 
@@ -63,8 +61,15 @@ class ParticipateService:
             list[Group]: List of groups the user is participating in.
         """
         results = (
-            db.session.query(Group)
+            db.session.query(
+                Group.group_id,
+                Group.group_name,
+                Group.group_pw,
+                Group.member_maxCnt,
+                Group.member_counter,
+                User.nick_name.label("owner_name"))
             .join(Participate, Participate.group_id == Group.group_id)
+            .join(User, User.user_id == Participate.user_id)
             .filter(Participate.user_id == user_id)
             .group_by(Group.group_id, Group.group_name)
             .all()
@@ -95,9 +100,11 @@ class ParticipateService:
 
         Args:
             group_id (int): ID of the group.
+            excluded_user_id: this ID will be excluded
 
         Returns:
-            int: user IDs in the group.
+            int: user ID of the group.
+            int: group_id of the group.
         """
         return (db.session.query(Participate)
                 .filter(Participate.group_id == group_id)
@@ -119,22 +126,22 @@ class ParticipateService:
         """
         try:
             groups = ParticipateService.get_group_metadata_by_user_id(user_id)
-            print(groups)
-            for group in groups:
+
+            for g in groups:
                 # 혼자였다면 삭제
-                if group.member_counter == 1:
-                    GroupService.delete_group(group.group_id)
+                if g.member_counter == 1:
+                    GroupService.delete_group(g.group_id)
                     continue
 
                 # group owner 였다면 새로운 owner 찾아주기
-                if group.owner == user_id:
+                if g.owner == user_id:
                     try:
-                        new_owner= ParticipateService.returnOldestMember(group_id=group.group_id, excluded_user_id=user_id)
+                        new_owner= ParticipateService.returnOldestMember(group_id=g.group_id, excluded_user_id=user_id)
                         print("new_owner_id:", new_owner)  # 확인
 
                         if new_owner is not None:
                             print("here")
-                            group.owner = new_owner.user_id
+                            g.owner = new_owner.user_id
                             db.session.commit()
                             print(f"Owner updated to {new_owner.user_id}")
                         else:
@@ -147,7 +154,7 @@ class ParticipateService:
                         db.session.rollback()
                         return generate_error(500, f"Error occurred deleting participant: {e}")
 
-                GroupService.decrement_group_counter(group.group_id)
+                GroupService.decrement_group_counter(g.group_id)
 
         except IntegrityError as e:
             db.session.rollback()  # 오류 발생 시 롤백
