@@ -1,9 +1,8 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
-from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.exc import IntegrityError
 
-from app import db, generate_error
+from app import db
 from app.models import User
 
 
@@ -22,7 +21,7 @@ class UserService:
         user = db.session.query(User).filter_by(nick_name=nick_name).first()
 
         if user:
-            user.updatedAt = datetime.utcnow()
+            user.updatedAt = datetime.now(UTC)
             db.session.commit()
             return user  # 이미 존재하는 경우 반환
 

@@ -1,12 +1,9 @@
 from flask_smorest import Blueprint
 from marshmallow import Schema, fields
-from numpy.f2py.auxfuncs import throw_error
 from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.error_handler import generate_error
-from app.services.commit_service import CommitService
-from app.services.group_service import GroupService
 from app.services.participate_service import ParticipateService
 from app.services.user_service import UserService
 

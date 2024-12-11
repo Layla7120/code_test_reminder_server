@@ -100,18 +100,38 @@ class ParticipateService:
 
         Args:
             group_id (int): ID of the group.
-            excluded_user_id: this ID will be excluded
+            excluded_user_id (int): this ID will be excluded
 
         Returns:
-            int: user ID of the group.
-            int: group_id of the group.
+            Participate
         """
-        return (db.session.query(Participate)
+        return (db.session.query(Participate.group_id, Participate.user_id)
                 .filter(Participate.group_id == group_id)
                 .filter(Participate.user_id != excluded_user_id)
                 .order_by(Participate.created_at.asc())
                 .first())
 
+    @staticmethod
+    def _handleGroupOwner(group, user_id):
+        if group.owner == user_id:
+            try:
+                new_owner = ParticipateService.returnOldestMember(group_id=group.group_id, excluded_user_id=user_id)
+                print("new_owner_id:", new_owner)  # 확인
+
+                if new_owner is not None:
+                    print("here")
+                    group.owner = new_owner.user_id
+                    db.session.commit()
+                    print(f"Owner updated to {new_owner.user_id}")
+                else:
+                    generate_error(404, "No valid owner found, cannot update.")
+            except IntegrityError as e:
+                db.session.rollback()  # 오류 발생 시 롤백
+                print(f"IntegrityError handleUserDelete: {e}")
+            except Exception as e:
+                # 에러 발생 시 롤백
+                db.session.rollback()
+                return generate_error(500, f"Error occurred deleting participant: {e}")
 
     @staticmethod
     def handleUserDelete(user_id):
@@ -131,35 +151,50 @@ class ParticipateService:
                 # 혼자였다면 삭제
                 if g.member_counter == 1:
                     GroupService.delete_group(g.group_id)
-                    continue
-
-                # group owner 였다면 새로운 owner 찾아주기
-                if g.owner == user_id:
-                    try:
-                        new_owner= ParticipateService.returnOldestMember(group_id=g.group_id, excluded_user_id=user_id)
-                        print("new_owner_id:", new_owner)  # 확인
-
-                        if new_owner is not None:
-                            print("here")
-                            g.owner = new_owner.user_id
-                            db.session.commit()
-                            print(f"Owner updated to {new_owner.user_id}")
-                        else:
-                            generate_error(404, "No valid owner found, cannot update.")
-                    except IntegrityError as e:
-                        db.session.rollback()  # 오류 발생 시 롤백
-                        print(f"IntegrityError handleUserDelete: {e}")
-                    except Exception as e:
-                        # 에러 발생 시 롤백
-                        db.session.rollback()
-                        return generate_error(500, f"Error occurred deleting participant: {e}")
-
-                GroupService.decrement_group_counter(g.group_id)
+                else:
+                    # group owner 였다면 새로운 owner 찾아주기
+                    ParticipateService._handleGroupOwner(g, user_id)
+                    GroupService.decrement_group_counter(g.group_id)
 
         except IntegrityError as e:
             db.session.rollback()  # 오류 발생 시 롤백
             print(f"IntegrityError: {e}")
 
+        except Exception as e:
+            # 에러 발생 시 롤백
+            db.session.rollback()
+            return generate_error(500, f"Error occurred deleting participant: {e}")
+
+    @staticmethod
+    def handleGroupLeave(user_id, group):
+        """
+        delete participate
+
+        Args:
+            user_id (int): ID of the User.
+            group : Name of the group
+        Returns:
+            Boolean
+        """
+        try:
+            # 혼자였다면 삭제
+            if group.member_counter == 1:
+                GroupService.delete_group(group.group_id)
+            else:
+                # group owner 였다면 새로운 owner 찾아주기
+                ParticipateService._handleGroupOwner(group, user_id)
+                GroupService.decrement_group_counter(group.group_id)
+            db.session.query(Participate).filter(
+                Participate.group_id == group.group_id,
+                Participate.user_id == user_id
+            ).delete()
+            db.session.commit()
+
+            return True
+        except IntegrityError as e:
+            db.session.rollback()  # 오류 발생 시 롤백
+            print(f"IntegrityError: {e}")
+            return False
         except Exception as e:
             # 에러 발생 시 롤백
             db.session.rollback()

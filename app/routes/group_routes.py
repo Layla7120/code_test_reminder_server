@@ -50,6 +50,11 @@ class GroupInfoResponseSchema(Schema):
     group_name = fields.String()
     group_pw = fields.String()
     group_commits = fields.Dict()
+
+class LeaveGroupSchema(Schema):
+    group_name = fields.String()
+    user_id = fields.Integer()
+
 # ----- ROUTES -----
 
 @group_bp.route('/info', methods=['GET'])
@@ -91,7 +96,6 @@ def create_group(query_args):
     """Create a new group."""
     if GroupService.get_group_by_name(query_args['group_name']):
         return generate_error(409, f"Group with name '{query_args['group_name']}' already exists.")
-    print(query_args)
     owner = UserService.get_user_by_user_id(query_args['owner_user_id'])
     if not owner:
         return generate_error(404, f"User ID '{query_args['owner_user_id']}' does not exist.")
@@ -136,6 +140,24 @@ def add_member(query_args):
         "group_name": group.group_name,
         "user_id": query_args['user_id']
     }
+
+@group_bp.route('/leave', methods=['DELETE'])
+@group_bp.arguments(LeaveGroupSchema, location='query')
+@group_bp.response(201)
+@handle_errors
+def delete_member(query_args):
+    """Add a member to a group."""
+    print(query_args)
+    user = UserService.get_user_by_user_id(query_args['user_id'])
+    if not user:
+        return generate_error(404, f"User ID '{query_args['user_id']}' does not exist.")
+    print(user)
+    group = GroupService.get_group_by_name(query_args['group_name'])
+    if not group:
+        return generate_error(404, f"Group ID '{query_args['group_name']}' does not exist.")
+    print(user.user_id, group)
+    return ParticipateService.handleGroupLeave(user.user_id, group)
+
 
 @group_bp.route('/search', methods=['GET'])
 @group_bp.arguments(SearchRequestSchema, location='query')
