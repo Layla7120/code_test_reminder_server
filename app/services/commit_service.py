@@ -188,19 +188,19 @@ class CommitService:
                 User.user_id,
                 User.nick_name,
                 User.github_id,
-                Commit.level,
+                func.substring_index(Commit.level, ' ', 1).label("level"),
                 func.coalesce(func.count(Commit.commit_id), 0).label("commit_count")
             )
-            .outerjoin(Commit, User.user_id == Commit.user_id)  # LEFT OUTER JOIN to include users with no commits
+            .outerjoin(Commit, User.user_id == Commit.user_id)
             .filter(User.user_id == user_id)
-            .group_by(User.user_id, User.nick_name, User.github_id, Commit.level)
+            .group_by(User.user_id, User.nick_name, User.github_id, func.substring_index(Commit.level, ' ', 1))
             .all()
         )
-        print("Query_results", query_results)
+
         if query_results is None:
             return None
 
-        format_resultc = [
+        format_result = [
             {
                 "github_id": result.github_id,
                 "nick_name": result.nick_name,
@@ -211,7 +211,7 @@ class CommitService:
             for result in query_results
         ]
 
-        return format_resultc
+        return format_result
 
     # ----- Commit Insertion -----
     @staticmethod
@@ -295,7 +295,7 @@ class CommitService:
 
         # Extract the days with commits
         commit_dates = {result.commit_date for result in results}
-        print(user_id, start_date, commit_dates)
+
         # Map commit activity for each day
         commit_activity = [
             {

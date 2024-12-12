@@ -180,7 +180,7 @@ class GroupService:
     def check_group_name(group_name):
         try:
             group = db.session.query(Group).filter(Group.group_name == group_name).all()
-            print(group)
+
             if group:
                 return False
             return True

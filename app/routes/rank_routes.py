@@ -1,5 +1,3 @@
-# TODO: [GET] /rank — top 30 , 랭킹 화면에서 사용 (전체 사용자에 대한 rank 제공)
-
 from flask import jsonify
 from flask_smorest import Blueprint
 from marshmallow import Schema, fields

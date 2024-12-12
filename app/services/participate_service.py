@@ -119,7 +119,6 @@ class ParticipateService:
                 print("new_owner_id:", new_owner)  # 확인
 
                 if new_owner is not None:
-                    print("here")
                     group.owner = new_owner.user_id
                     db.session.commit()
                     print(f"Owner updated to {new_owner.user_id}")
