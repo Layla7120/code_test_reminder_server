@@ -38,15 +38,17 @@ def store_commits(query_arg):
     CommitService.insert_new_commits(user_id, commits)
 
     week_activity = CommitService.get_weekly_info(user_id)
-    recent_commits = CommitService.get_recent_commits(user_id)
+    all_commits = CommitService.get_all_commits(user_id)
     commit_level_counts = CommitService.get_commit_level_counts(user_id)
     rank_info = CommitService.get_user_rank(user_id)
-
+    commit_grass = CommitService.get_month_commit_grass(user_id)
+    print(commit_grass)
     result = {
         "week_activity": week_activity,
-        "recent_commits": recent_commits,
+        "all_commits": all_commits,
         "commit_level_counts": commit_level_counts,
-        "rank_info": rank_info
+        "rank_info": rank_info,
+        "commit_grass": commit_grass
     }
 
     return jsonify(result)
@@ -64,10 +66,10 @@ def get_commit_activity(user_data):
 @commits_bp.route('', methods=['GET'])
 @commits_bp.arguments(CommitActivityRequestSchema, location='query')
 @commits_bp.response(200)
-def get_recent_commit(user_data):
-    """Retrieve recent 10 commit activity of a user."""
+def get_all_commit(user_data):
+    """Retrieve all commit activity of a user."""
     user_id = user_data["user_id"]
-    commit_activity = CommitService.get_recent_commits(user_id)
+    commit_activity = CommitService.get_all_commits(user_id)
 
     return jsonify(commit_activity)
 
@@ -75,8 +77,18 @@ def get_recent_commit(user_data):
 @commits_bp.arguments(CommitActivityRequestSchema, location='query')
 @commits_bp.response(200)
 def get_commit_level_ratio(user_data):
-    """Retrieve recent 10 commit activity of a user."""
+    """Retrieve commit level ratio of a user."""
     user_id = user_data["user_id"]
     commit_activity = CommitService.get_commit_level_counts(user_id)
+
+    return jsonify(commit_activity)
+
+@commits_bp.route('/grass', methods=['GET'])
+@commits_bp.arguments(CommitActivityRequestSchema, location='query')
+@commits_bp.response(200)
+def get_commit_grass(user_data):
+    """Retrieve current & previous month grass of a user."""
+    user_id = user_data["user_id"]
+    commit_activity = CommitService.get_month_commit_grass(user_id)
 
     return jsonify(commit_activity)
