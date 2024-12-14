@@ -200,7 +200,16 @@ class CommitService:
         )
 
         if query_results is None:
-            return None
+            user = User.query.get(user_id)
+            return {
+                "github_id": user.github_id,
+                "nick_name": user.nick_name,
+                "user_id": user.user_id,
+                "commit_count": 0,
+                "rank": 0,
+                "difference_from_prev": -1
+            }
+
 
         response_result = {
             "github_id": query_results.github_id,
@@ -238,7 +247,7 @@ class CommitService:
                 "nick_name": result.nick_name,
                 "user_id": result.user_id,
                 "commit_count": result.commit_count,
-                "level": result.level
+                "level": result.level or "unrated"
             }
             for result in query_results
         ]
@@ -260,6 +269,7 @@ class CommitService:
         """
         commit_data_list = []
 
+        print(commit_jsons)
         for commit_json in commit_jsons:
             # Extract fields from JSON
             commit_date = datetime.strptime(commit_json['author']['date'], "%Y-%m-%dT%H:%M:%SZ")
@@ -283,6 +293,7 @@ class CommitService:
                 })
 
         if commit_data_list:
+            print(commit_data_list)
             # Insert new commits while ignoring duplicates
             stmt = insert(Commit).values([
                 {
@@ -294,7 +305,7 @@ class CommitService:
                     "sha": commit_data["sha"]
                 }
                 for commit_data in commit_data_list
-            ]).prefix_with("IGNORE")  # Use MySQL's INSERT IGNORE
+            ]).on_duplicate_key_update(user_id=user_id)
 
             db.session.execute(stmt)
             db.session.commit()

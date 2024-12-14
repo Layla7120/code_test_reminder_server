@@ -35,6 +35,7 @@ def store_commits(query_arg):
 
     # Call fetch commits and insert new commits
     commits = GitHubService.fetch_commits_from_github(github_id, repository_name)
+    print(user_id, commits)
     CommitService.insert_new_commits(user_id, commits)
 
     week_activity = CommitService.get_weekly_info(user_id)
@@ -42,7 +43,7 @@ def store_commits(query_arg):
     commit_level_counts = CommitService.get_commit_level_counts(user_id)
     rank_info = CommitService.get_user_rank(user_id)
     commit_grass = CommitService.get_month_commit_grass(user_id)
-    print(commit_grass)
+
     result = {
         "week_activity": week_activity,
         "all_commits": all_commits,
