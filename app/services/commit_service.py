@@ -211,7 +211,6 @@ class CommitService:
         )
         rank_to_commit = {rank: commit_count for commit_count, rank in rank_info}
 
-        print(rank_to_commit,  query_results.rank, rank_to_commit.get(query_results.rank - 1) - query_results.commit_count)
         if query_results is None:
             user = User.query.get(user_id)
             return {
