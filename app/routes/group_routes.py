@@ -9,7 +9,6 @@ from app.services.commit_service import CommitService
 from app.services.group_service import GroupService
 from app.services.participate_service import ParticipateService
 from app.services.user_service import UserService
-from app.extensions import bcrypt
 
 group_bp = Blueprint('Group', __name__)
 
@@ -41,11 +40,26 @@ class GroupResponseSchema(Schema):
     group_pw = fields.String()
     member_maxCnt = fields.Integer(description="Max Count of members per group")
 
+class GroupResponseSchema2(Schema):
+    group_id = fields.String()
+    group_name = fields.String()
+    member_maxCnt = fields.Integer(description="Max Count of members per group")
+
+class GroupInfoResponseSchema(Schema):
+    group_id = fields.String()
+    group_name = fields.String()
+    group_pw = fields.String()
+    group_commits = fields.Dict()
+
+class LeaveGroupSchema(Schema):
+    group_name = fields.String()
+    user_id = fields.Integer()
+
 # ----- ROUTES -----
 
 @group_bp.route('/info', methods=['GET'])
 @group_bp.arguments(GroupQuerySchema, location='query')
-@group_bp.response(200, GroupResponseSchema)
+@group_bp.response(200, GroupInfoResponseSchema)
 @handle_errors
 def get_group_info(query_args):
     """Retrieve group info by user ID."""
@@ -54,31 +68,34 @@ def get_group_info(query_args):
     group_metadata = ParticipateService.get_group_metadata_by_user_id(user_id)
     if not group_metadata:
         return generate_error(404, "Group not found")
-
+    print(group_metadata)
     results = []
     for g_metadata in group_metadata:
         group_data = {
             "group_id": g_metadata.group_id,
             "group_name": g_metadata.group_name,
+            "group_pw" : g_metadata.group_pw,
+            "member_counter": g_metadata.member_counter,
+            "member_maxCnt": g_metadata.member_maxCnt,
+            "owner_name": g_metadata.owner_name,
             "group_commits": []
         }
 
         member_ids = ParticipateService.get_member_ids_by_group_id(g_metadata.group_id)
         commit_infos = CommitService.count_commits_for_current_month(member_ids)
-        group_data["group_commits"] = (commit_infos)
+        group_data["group_commits"] = commit_infos
         results.append(group_data)
     print(results)
     return jsonify(results)
 
 @group_bp.route('', methods=['POST'])
 @group_bp.arguments(CreateGroupRequestSchema, location='json')
-@group_bp.response(201, GroupResponseSchema)
+@group_bp.response(201, GroupResponseSchema2)
 @handle_errors
 def create_group(query_args):
     """Create a new group."""
     if GroupService.get_group_by_name(query_args['group_name']):
         return generate_error(409, f"Group with name '{query_args['group_name']}' already exists.")
-
     owner = UserService.get_user_by_user_id(query_args['owner_user_id'])
     if not owner:
         return generate_error(404, f"User ID '{query_args['owner_user_id']}' does not exist.")
@@ -87,8 +104,7 @@ def create_group(query_args):
     if max_mem_count > 30:
         return generate_error(409, "Member_maxCnt should be lower or equal to 30.")
 
-    crypt_pw = bcrypt.generate_password_hash(query_args['group_pw']).decode('utf-8')
-    group = GroupService.create_group(query_args['group_name'], crypt_pw, max_mem_count, owner.user_id)
+    group = GroupService.create_group(query_args['group_name'], query_args['group_pw'], max_mem_count, owner.user_id)
     ParticipateService.assign_group(group.group_id, query_args['owner_user_id'])
 
     return {
@@ -125,6 +141,24 @@ def add_member(query_args):
         "user_id": query_args['user_id']
     }
 
+@group_bp.route('/leave', methods=['DELETE'])
+@group_bp.arguments(LeaveGroupSchema, location='query')
+@group_bp.response(201)
+@handle_errors
+def delete_member(query_args):
+    """Add a member to a group."""
+    print(query_args)
+    user = UserService.get_user_by_user_id(query_args['user_id'])
+    if not user:
+        return generate_error(404, f"User ID '{query_args['user_id']}' does not exist.")
+    print(user)
+    group = GroupService.get_group_by_name(query_args['group_name'])
+    if not group:
+        return generate_error(404, f"Group ID '{query_args['group_name']}' does not exist.")
+    print(user.user_id, group)
+    return ParticipateService.handleGroupLeave(user.user_id, group)
+
+
 @group_bp.route('/search', methods=['GET'])
 @group_bp.arguments(SearchRequestSchema, location='query')
 @group_bp.response(200)
@@ -137,3 +171,14 @@ def search_group(query_args):
     if not group_list:
         return generate_error(404, "Group not found")
     return jsonify(group_list)
+
+@group_bp.route('/check/name', methods=['GET'])
+@group_bp.arguments(SearchRequestSchema, location='query')
+@group_bp.response(200)
+@handle_errors
+def group_name_check(query_args):
+    """Check if group name is available"""
+    group_name = query_args['group_name']
+
+    return GroupService.check_group_name(group_name)
+

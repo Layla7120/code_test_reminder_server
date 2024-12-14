@@ -8,7 +8,6 @@ from flask_smorest import Api
 from app.db import db
 from app.db.config import Config
 from app.error_handler import generate_error
-from app.extensions import bcrypt
 from app.routes.rank_routes import rank_bp
 
 from app.routes.user_routes import user_bp
@@ -39,8 +38,6 @@ def create_app():
     # Configure your app (if needed)
     app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 
-    # Initialize bcrypt with the app
-    bcrypt.init_app(app)
 
     limiter = Limiter(
         app = app,

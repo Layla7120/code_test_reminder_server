@@ -1,16 +1,22 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
-from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.exc import IntegrityError
 
-from app import db, generate_error
+from app import db
 from app.models import User
 
 
 class UserService:
     @staticmethod
     def get_user_by_user_id(user_id):
-        return User.query.get(user_id)
+        print(f"Fetching user with ID: {user_id} (Type: {type(user_id)})")
+        user = User.query.get(user_id)
+        if user:
+            print(f"✅ User found: {user}")
+        else:
+            print("❌ User not found")
+        return user
+
 
     @staticmethod
     def get_user_by_nick_name(nick_name):
@@ -22,7 +28,7 @@ class UserService:
         user = db.session.query(User).filter_by(nick_name=nick_name).first()
 
         if user:
-            user.updatedAt = datetime.utcnow()
+            user.updatedAt = datetime.now(UTC)
             db.session.commit()
             return user  # 이미 존재하는 경우 반환
 
@@ -51,6 +57,48 @@ class UserService:
 
         except IntegrityError as e:
             db.session.rollback()  # 오류 발생 시 롤백
+            print(f"IntegrityError: {e}")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+
+    @staticmethod
+    def update_nick_name(user_id, nick_name):
+        try:
+            user = User.query.get(user_id)
+
+            if user:
+                user.nick_name = nick_name
+                db.session.commit()
+                db.session.refresh(user)
+                print(f"User updated nick_name {user.user_id}")
+                return user
+            else:
+                print("User not found")
+
+        except IntegrityError as e:
+            db.session.rollback()
+            print(f"IntegrityError: {e}")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+
+    @staticmethod
+    def update_repo(user_id, repository_name):
+        try:
+            user = User.query.get(user_id)
+
+            if user:
+                user.repository_name = repository_name
+                db.session.commit()
+                db.session.refresh(user)
+                print(f"User updated repo {user.user_id}")
+                return user
+            else:
+                print("User not found")
+
+        except IntegrityError as e:
+            db.session.rollback()
             print(f"IntegrityError: {e}")
         except Exception as e:
             db.session.rollback()

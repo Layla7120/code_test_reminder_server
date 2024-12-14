@@ -1,4 +1,4 @@
-from app import db, bcrypt
+from app import db
 from app.error_handler import generate_error
 from app.models import Group
 
@@ -138,8 +138,7 @@ class GroupService:
         Raises:
             generate_error: If the password is incorrect.
         """
-        # if not bcrypt.check_password_hash(group.group_pw, provided_password):
-        if bcrypt.check_password_hash(group.group_pw, provided_password):
+        if group.group_pw == provided_password:
             return True
         else:
             return False
@@ -174,5 +173,17 @@ class GroupService:
         except Exception as e:
             # 에러 발생 시 롤백
             db.session.rollback()
+            print(f"Error occurred: {e}")
+            return False
+
+    @staticmethod
+    def check_group_name(group_name):
+        try:
+            group = db.session.query(Group).filter(Group.group_name == group_name).all()
+
+            if group:
+                return False
+            return True
+        except Exception as e:
             print(f"Error occurred: {e}")
             return False
