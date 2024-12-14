@@ -157,7 +157,6 @@ class GroupService:
         if group.member_counter >= group.member_maxCnt:
             return generate_error(409, "Group is already full.")
 
-
     @staticmethod
     def delete_group(group_id):
         """
@@ -187,3 +186,17 @@ class GroupService:
         except Exception as e:
             print(f"Error occurred: {e}")
             return False
+
+    @staticmethod
+    def update_password(group_id, new_password):
+        group = Group.query.get(group_id)
+        group.group_pw = new_password
+        db.session.commit()
+
+    @staticmethod
+    def check_group_owner(group_id, user_id):
+        group = Group.query.get(group_id)
+        if group.owner != user_id:
+            return False
+
+        return True

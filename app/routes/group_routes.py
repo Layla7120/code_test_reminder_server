@@ -12,9 +12,11 @@ from app.services.user_service import UserService
 
 group_bp = Blueprint('Group', __name__)
 
+
 # ----- SCHEMAS -----
 class GroupQuerySchema(Schema):
     user_id = fields.Integer(required=True, description="User ID to find group")
+
 
 class CreateGroupRequestSchema(Schema):
     group_name = fields.String(required=True, description="Name of the group")
@@ -26,13 +28,16 @@ class CreateGroupRequestSchema(Schema):
     )
     owner_user_id = fields.Integer(required=True, description="Owner User ID", dump_default=5)
 
+
 class AddMemberRequestSchema(Schema):
     user_id = fields.Integer(required=True, description="User ID to add")
     group_name = fields.String(required=True, description="Group ID to add")
     group_pw = fields.String(required=True, description="Group password entered by the user")
 
+
 class SearchRequestSchema(Schema):
     group_name = fields.String(required=True, description="Name of the group")
+
 
 class GroupResponseSchema(Schema):
     group_id = fields.String()
@@ -40,10 +45,12 @@ class GroupResponseSchema(Schema):
     group_pw = fields.String()
     member_maxCnt = fields.Integer(description="Max Count of members per group")
 
+
 class GroupResponseSchema2(Schema):
     group_id = fields.String()
     group_name = fields.String()
     member_maxCnt = fields.Integer(description="Max Count of members per group")
+
 
 class GroupInfoResponseSchema(Schema):
     group_id = fields.String()
@@ -51,9 +58,17 @@ class GroupInfoResponseSchema(Schema):
     group_pw = fields.String()
     group_commits = fields.Dict()
 
+
 class LeaveGroupSchema(Schema):
     group_name = fields.String()
     user_id = fields.Integer()
+
+
+class UpdatePWRequestSchema(Schema):
+    user_id = fields.Integer(required=True, description="User ID to modify")
+    group_id = fields.Integer(required=True, description="Group ID to modify")
+    group_pw = fields.String(required=True, description="Group password entered by the user")
+
 
 # ----- ROUTES -----
 
@@ -74,7 +89,7 @@ def get_group_info(query_args):
         group_data = {
             "group_id": g_metadata.group_id,
             "group_name": g_metadata.group_name,
-            "group_pw" : g_metadata.group_pw,
+            "group_pw": g_metadata.group_pw,
             "member_counter": g_metadata.member_counter,
             "member_maxCnt": g_metadata.member_maxCnt,
             "owner_name": g_metadata.owner_name,
@@ -87,6 +102,7 @@ def get_group_info(query_args):
         results.append(group_data)
     print(results)
     return jsonify(results)
+
 
 @group_bp.route('', methods=['POST'])
 @group_bp.arguments(CreateGroupRequestSchema, location='json')
@@ -114,6 +130,7 @@ def create_group(query_args):
         "owner_user_id": group.owner
     }
 
+
 @group_bp.route('/member', methods=['POST'])
 @group_bp.arguments(AddMemberRequestSchema, location='json')
 @group_bp.response(201)
@@ -140,6 +157,7 @@ def add_member(query_args):
         "group_name": group.group_name,
         "user_id": query_args['user_id']
     }
+
 
 @group_bp.route('/leave', methods=['DELETE'])
 @group_bp.arguments(LeaveGroupSchema, location='query')
@@ -172,6 +190,7 @@ def search_group(query_args):
         return generate_error(404, "Group not found")
     return jsonify(group_list)
 
+
 @group_bp.route('/check/name', methods=['GET'])
 @group_bp.arguments(SearchRequestSchema, location='query')
 @group_bp.response(200)
@@ -182,3 +201,50 @@ def group_name_check(query_args):
 
     return GroupService.check_group_name(group_name)
 
+
+# 비밀번호 업데이트
+@group_bp.route('/password', methods=['PATCH'])
+@group_bp.arguments(UpdatePWRequestSchema, location='json')
+@group_bp.response(200)
+@handle_errors
+def update_group_password(query_args):
+    """Update the password of a group by group_id and return updated group info."""
+    group_id = query_args['group_id']
+    user_id = query_args['user_id']
+
+    # 그룹 ID 확인
+    group = GroupService.get_group_by_id(group_id)
+    if not group:
+        return generate_error(404, f"Group ID '{group_id}' does not exist.")
+
+    # 그룹 소유자 확인
+    if not GroupService.check_group_owner(group_id, user_id):
+        return generate_error(403, "Only the owner can update the password.")
+
+    # 비밀번호 업데이트
+    new_password = query_args['group_pw']
+    GroupService.update_password(group_id, new_password)
+
+    # 그룹 메타데이터 가져오기
+    group_metadata = ParticipateService.get_group_metadata_by_user_id(user_id)
+    if not group_metadata:
+        return generate_error(404, "Group not found")
+    print(group_metadata)
+    results = []
+    for g_metadata in group_metadata:
+        group_data = {
+            "group_id": g_metadata.group_id,
+            "group_name": g_metadata.group_name,
+            "group_pw": g_metadata.group_pw,
+            "member_counter": g_metadata.member_counter,
+            "member_maxCnt": g_metadata.member_maxCnt,
+            "owner_name": g_metadata.owner_name,
+            "group_commits": []
+        }
+
+        member_ids = ParticipateService.get_member_ids_by_group_id(g_metadata.group_id)
+        commit_infos = CommitService.count_commits_for_current_month(member_ids)
+        group_data["group_commits"] = commit_infos
+        results.append(group_data)
+    print(results)
+    return jsonify(results)
