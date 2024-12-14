@@ -14,6 +14,11 @@ user_bp = Blueprint('User', __name__)
 class UserQuerySchema(Schema):
     user_id = fields.Integer(required=True, description="User ID to fetch")
 
+class UserUpdateSchema(Schema):
+    user_id = fields.Integer(required=True, description="User ID to fetch")
+    nick_name = fields.String(description="Nickname of the user")
+    repository_name = fields.String(description="Repository name of the user")
+
 class UserRequestSchema(Schema):
     nick_name = fields.String(required=True, description="Nickname of the user")
     github_id = fields.String(required=True, description="GitHub ID of the user")
@@ -115,9 +120,6 @@ def check_user(query_args):
     elif user:
         return generate_error(404, "Nick name already used.")
 
-# TODO: user github repository 변경, user 닉네임 변경 sql update 할 때 둘 중 하나만 받아도 업데이트 하게
-#  - UPDATE if nickName != null || nickName != "" if repository != null 또는 repository != ""
-
 @user_bp.route('/delete', methods=['DELETE'])
 @user_bp.arguments(UserQuerySchema, location='query')
 @user_bp.response(200, description="User Deleted")
@@ -145,6 +147,49 @@ def delete_user(query_args):
         ParticipateService.handleUserDelete(user.user_id)
         UserService.delete_user(user.user_id)
         return True
+    except IntegrityError:
+        generate_error(400, "Cannot delete record due to foreign key constraint.")
+    except Exception as e:
+        generate_error(500, f"Internal Server Error: {str(e)}")
+
+@user_bp.route('/update', methods=['PATCH'])
+@user_bp.arguments(UserUpdateSchema, location='json')
+@user_bp.response(201, UserResponseSchema)
+def update_user(query_args):
+    """
+    update the user
+    UPDATE if nickName != null || nickName != "" if repository != null 또는 repository != ""
+
+    Args:
+        query_args (dict): Query arguments containing the `user_id`.
+
+    Returns:
+        Response 200 if user is deleted.
+
+    Raises:
+        generate_error: If something went wrong.
+    """
+    user_id = query_args['user_id']
+
+    try:
+        user = UserService.get_user_by_user_id(user_id)
+
+        if query_args['nick_name']:
+            try:
+                UserService.update_nick_name(user.user_id, query_args['nick_name'])
+            except Exception as e:
+                print(f"Error updating nick name: {e}")
+
+        if query_args['repository_name']:
+            try:
+                UserService.update_repo(user.user_id, query_args['repository_name'])
+            except Exception as e:
+                print(f"Error updating repository: {e}")
+
+        updated_user = UserService.get_user_by_user_id(user_id)
+        print(updated_user)
+        return updated_user
+
     except IntegrityError:
         generate_error(400, "Cannot delete record due to foreign key constraint.")
     except Exception as e:
