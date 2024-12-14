@@ -1,7 +1,6 @@
 from sqlalchemy import text
 from app import db
 
-# TODO: 닉네임 추가
 class User(db.Model):
     __tablename__ = 'Users'
 
@@ -74,3 +73,19 @@ class Participate(db.Model):
 
     def __repr__(self):
         return f"<Participate(group_id={self.group_id}, user_id={self.user_id})>"
+
+
+class History(db.Model):
+    __tablename__ = 'History'
+
+    history_id = db.Column(db.Integer, primary_key=True, autoincrement=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id', ondelete='CASCADE', onupdate='NO ACTION'),
+                        nullable=False)
+    problem_num = db.Column(db.String(255), nullable=False)
+    solve_time = db.Column(db.String(255), nullable=False)
+
+    # Relationship with User
+    user = db.relationship('User', back_populates='historys')
+
+    def __repr__(self):
+        return f"<History(history_id={self.history_id}, user_id={self.user_id}, problem_num={self.problem_num}, solve_time={self.solve_time})>"
