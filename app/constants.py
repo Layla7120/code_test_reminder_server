@@ -1,6 +1,8 @@
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
+from flask import app
 from flask.cli import load_dotenv
 
 load_dotenv()
@@ -11,7 +13,7 @@ DAYS_IN_WEEK = 7
 DEFAULT_GROUP_MAX_CNT = 5
 RANK_PUBLIC_COUNT = 30
 
-TODAY = datetime.now(timezone.utc)
+TODAY = datetime.now(timezone.utc).astimezone(ZoneInfo("Asia/Seoul"))
 
 COMMIT_TITLE_PATTERN = r"\[(.*?)\] Title: (.*?), Time: (.*?), Memory: (.*?) -"
 COMMIT_TITLE_PATTERN_LEVEL = 1
