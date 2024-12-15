@@ -527,8 +527,8 @@ class CommitService:
                 (extract('month', Commit.commit_date) == previous_month) &
                 (extract('year', Commit.commit_date) == current_year)
             )
-            .group_by(Commit.commit_date)
-            .order_by(Commit.commit_date)
+            .group_by(func.date(Commit.commit_date))
+            .order_by(func.date(Commit.commit_date))
             .all()
         )
 
@@ -544,8 +544,8 @@ class CommitService:
                 extract('month', Commit.commit_date) == current_month,
                 extract('year', Commit.commit_date) == current_year
             )
-            .group_by(Commit.commit_date)
-            .order_by(Commit.commit_date)
+            .group_by(func.date(Commit.commit_date))
+            .order_by(func.date(Commit.commit_date))
             .all()
         )
 
