@@ -1,5 +1,3 @@
-import os
-
 from flask import Flask, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -26,17 +24,12 @@ def create_app():
     app.config["OPENAPI_URL_PREFIX"] = "/docs"
     app.config['OPENAPI_SWAGGER_UI_PATH'] = "/swagger-ui"
     app.config['OPENAPI_SWAGGER_UI_URL'] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
-
     api = Api(app)
 
     # Load database configuration
     app.config.from_object(Config)
 
-    # Initialize extensions
     db.init_app(app)
-
-    # Configure your app (if needed)
-    app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 
 
     limiter = Limiter(
