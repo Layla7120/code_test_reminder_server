@@ -2,7 +2,6 @@ import os
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from flask import app
 from flask.cli import load_dotenv
 
 load_dotenv()
