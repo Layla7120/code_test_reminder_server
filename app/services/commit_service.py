@@ -2,7 +2,7 @@ import re
 from datetime import datetime, timedelta
 
 from sqlalchemy.dialects.mysql import insert
-from sqlalchemy import func, extract, desc, case, Integer, cast, select, distinct
+from sqlalchemy import func, extract, desc, case, Integer, cast, distinct
 
 from app.constants import ACTIVITY_DAYS, DAYS_IN_WEEK, TODAY
 from app import db
@@ -211,7 +211,6 @@ class CommitService:
         )
         rank_to_commit = {rank: commit_count for commit_count, rank in rank_info}
 
-        print(rank_to_commit,  query_results.rank, rank_to_commit.get(query_results.rank - 1) - query_results.commit_count)
         if query_results is None:
             user = User.query.get(user_id)
             return {
@@ -223,6 +222,9 @@ class CommitService:
                 "difference_from_prev": -1
             }
 
+        diff = 0
+        if rank_to_commit.get(query_results.rank - 1):
+            diff = rank_to_commit.get(query_results.rank - 1) - query_results.commit_count
 
         response_result = {
             "github_id": query_results.github_id,
@@ -230,7 +232,7 @@ class CommitService:
             "user_id": query_results.user_id,
             "commit_count": query_results.commit_count,
             "rank": query_results.rank,
-            "difference_from_prev": rank_to_commit.get(query_results.rank - 1) - query_results.commit_count
+            "difference_from_prev": diff
         }
 
         return response_result
@@ -525,8 +527,8 @@ class CommitService:
                 (extract('month', Commit.commit_date) == previous_month) &
                 (extract('year', Commit.commit_date) == current_year)
             )
-            .group_by(Commit.commit_date)
-            .order_by(Commit.commit_date)
+            .group_by(func.date(Commit.commit_date))
+            .order_by(func.date(Commit.commit_date))
             .all()
         )
 
@@ -542,8 +544,8 @@ class CommitService:
                 extract('month', Commit.commit_date) == current_month,
                 extract('year', Commit.commit_date) == current_year
             )
-            .group_by(Commit.commit_date)
-            .order_by(Commit.commit_date)
+            .group_by(func.date(Commit.commit_date))
+            .order_by(func.date(Commit.commit_date))
             .all()
         )
 
