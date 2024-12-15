@@ -517,7 +517,7 @@ class CommitService:
 
         previous_month_query = (
             db.session.query(
-                Commit.commit_date,
+                func.date(Commit.commit_date).label('commit_date'),
                 func.count(Commit.commit_date).label('commit_count')
             )
             .select_from(User)
@@ -531,10 +531,9 @@ class CommitService:
             .order_by(func.date(Commit.commit_date))
             .all()
         )
-
         current_month_query = (
             db.session.query(
-                Commit.commit_date,
+                func.date(Commit.commit_date).label('commit_date'),
                 func.count(Commit.commit_date).label('commit_count')
             )
             .select_from(User)
