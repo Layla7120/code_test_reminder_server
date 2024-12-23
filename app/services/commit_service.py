@@ -571,3 +571,15 @@ class CommitService:
             }
 
         return response_result
+
+    @staticmethod
+    def delete_commit(user_id):
+        try:
+            rows_deleted = db.session.query(Commit).filter(Commit.user_id == user_id).delete()
+            db.session.commit()
+            return rows_deleted > 0
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error deleting commit with user_id {user_id}: {e}")
+            return False
+

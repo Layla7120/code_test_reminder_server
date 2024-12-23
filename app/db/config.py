@@ -4,7 +4,7 @@ from flask.cli import load_dotenv
 load_dotenv()
 
 class Config:
-    local
+    # local
     db = {
         'user': os.getenv("DB_USER"),
         'password': os.getenv("DB_PASSWORD"),
