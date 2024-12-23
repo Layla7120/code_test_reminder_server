@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.error_handler import generate_error
+from app.services.commit_service import CommitService
 from app.services.participate_service import ParticipateService
 from app.services.user_service import UserService
 
@@ -170,8 +171,10 @@ def update_user(query_args):
         generate_error: If something went wrong.
     """
     user_id = query_args['user_id']
-
+    print(query_args)
     try:
+        if UserService.get_user_by_nick_name(query_args['nick_name']):
+            generate_error(400, "Nick name already used.")
         user = UserService.get_user_by_user_id(user_id)
 
         if query_args['nick_name']:
@@ -183,6 +186,8 @@ def update_user(query_args):
         if query_args['repository_name']:
             try:
                 UserService.update_repo(user.user_id, query_args['repository_name'])
+                delete_result = CommitService.delete_commit(user.user_id)
+                print(f"deleted: {delete_result}")
             except Exception as e:
                 print(f"Error updating repository: {e}")
 
@@ -191,6 +196,6 @@ def update_user(query_args):
         return updated_user
 
     except IntegrityError:
-        generate_error(400, "Cannot delete record due to foreign key constraint.")
+        generate_error(400, "Cannot update.")
     except Exception as e:
         generate_error(500, f"Internal Server Error: {str(e)}")

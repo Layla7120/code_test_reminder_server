@@ -4,7 +4,7 @@ from flask.cli import load_dotenv
 load_dotenv()
 
 class Config:
-    #local
+    # local
     # db = {
     #     'user': os.getenv("DB_USER"),
     #     'password': os.getenv("DB_PASSWORD"),
@@ -25,6 +25,6 @@ class Config:
     }
     SQLALCHEMY_DATABASE_URI = f"mysql+mysqlconnector://{db['user']}:{db['password']}@/{db['database']}"\
         f"?unix_socket={db['host']}&charset=utf8mb4&collation=utf8mb4_general_ci"
-    
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

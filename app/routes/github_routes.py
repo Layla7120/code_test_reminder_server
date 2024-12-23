@@ -54,7 +54,7 @@ def get_repo(query_args):
     try:
         # Call GitHub API
         response = requests.get(url, headers=headers)
-
+        print(response)
         # Handle response codes
         if response.status_code == 404:
             return generate_error(404, f"GitHub repository '{repository_name}' of '{github_id}' not found.")

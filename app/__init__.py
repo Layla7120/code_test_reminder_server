@@ -31,7 +31,6 @@ def create_app():
 
     db.init_app(app)
 
-
     limiter = Limiter(
         app = app,
         key_func = get_remote_address,
@@ -52,7 +51,6 @@ def create_app():
     def default():
         return "default limit!"
 
-    # Optionally set default limits
     limiter.init_app(app)
 
     # 라우트 등록
