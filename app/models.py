@@ -28,7 +28,7 @@ class Commit(db.Model):
     commit_id = db.Column(db.Integer, primary_key=True, autoincrement=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('Users.user_id', ondelete='CASCADE', onupdate='NO ACTION'),
                         nullable=False)
-    commit_date = db.Column(db.TIMESTAMP, nullable=True)
+    commit_date = db.Column(db.TIMESTAMP, nullable=True, index=True)
     commit_url = db.Column(db.String(255), nullable=False)
     title = db.Column(db.String(255), nullable=False)
     level = db.Column(db.String(255), nullable=False)

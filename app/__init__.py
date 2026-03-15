@@ -1,10 +1,12 @@
 from flask import Flask, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_migrate import Migrate
 from flask_smorest import Api
 
 from app.db import db
 from app.db.config import Config
+from app.extensions import cache
 from app.error_handler import generate_error
 from app.routes.rank_routes import rank_bp
 
@@ -30,11 +32,16 @@ def create_app():
     app.config.from_object(Config)
 
     db.init_app(app)
+    Migrate(app, db)
+    cache.init_app(app)
+
+    import os
+    load_test_mode = os.getenv("LOAD_TEST", "false").lower() == "true"
 
     limiter = Limiter(
         app = app,
         key_func = get_remote_address,
-        default_limits=["30 per hour", "10 per minute"]
+        default_limits=[] if load_test_mode else ["30 per hour", "10 per minute"]
     )
 
     @app.errorhandler(429)
