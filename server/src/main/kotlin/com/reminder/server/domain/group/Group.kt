@@ -6,7 +6,7 @@ import jakarta.persistence.*
 
 @Entity
 @Table(
-    name = "`groups`",  // MySQL 예약어 충돌 방지
+    name = "`groups`",
     uniqueConstraints = [
         UniqueConstraint(name = "uk_groups_name", columnNames = ["groupName"])
     ]
@@ -15,7 +15,6 @@ class Group(
     @Column(nullable = false, length = 100)
     val groupName: String,
 
-    // BCrypt 해시값 저장 (60자 고정) — 레거시 평문 저장 버그 수정
     @Column(length = 60)
     var groupPw: String?,
 
@@ -32,16 +31,19 @@ class Group(
     @Column(name = "group_id")
     val id: Long = 0
 
-    // member_counter 컬럼 없음
-    // 레거시 구조: member_counter += 1 → 동시 요청 시 Lost Update 발생
-    // 해결: Participate COUNT()로 항상 정확한 값 계산 → 부정확할 여지 자체를 제거
-    @OneToMany(mappedBy = "group", cascade = [CascadeType.ALL], orphanRemoval = true)
-    val participations: MutableList<Participate> = mutableListOf()
-
-    val memberCount: Int get() = participations.size
-
-    // 비즈니스 규칙이 엔티티 안에 있다 → 서비스가 isFull()만 호출하면 됨
-    fun isFull(): Boolean = memberCount >= memberMaxCount
+    // member_counter 복원 — 단, 애플리케이션에서 += 1 하지 않음
+    //
+    // [이전 접근의 문제]
+    // participations.size → LAZY 컬렉션 전체 로딩 → OOM
+    // COUNT 쿼리 + INSERT → TOCTOU 레이스 컨디션 (check-then-act 비원자적)
+    //
+    // [현재 접근]
+    // DB 레벨 원자적 UPDATE: member_counter = member_counter + 1 WHERE counter < max
+    // 조건 확인과 증가가 단일 연산 → Lost Update 없음, 엔티티 로딩 없음
+    // 반환값 0 = 정원 초과, 1 = 성공 → 별도 조회 불필요
+    @Column(nullable = false)
+    var memberCounter: Int = 0
+        protected set
 
     fun changePassword(encodedPw: String) {
         this.groupPw = encodedPw

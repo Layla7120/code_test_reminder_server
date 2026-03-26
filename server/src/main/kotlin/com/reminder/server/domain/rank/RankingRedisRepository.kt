@@ -25,7 +25,7 @@ class RankingRedisRepository(private val redisTemplate: StringRedisTemplate) {
     private val zAddGtScript: RedisScript<Long> = RedisScript.of(
         """
         local current = redis.call('ZSCORE', KEYS[1], ARGV[1])
-        if current == false or tonumber(ARGV[2]) > tonumber(current) then
+        if not current or tonumber(ARGV[2]) > tonumber(current) then
             return redis.call('ZADD', KEYS[1], ARGV[2], ARGV[1])
         end
         return 0

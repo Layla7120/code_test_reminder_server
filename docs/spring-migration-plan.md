@@ -76,24 +76,40 @@ db.session.commit()
 
 동시에 두 유저가 마지막 자리에 참여하면 둘 다 counter=4를 읽고 5로 저장 → 실제로 6명인데 counter는 5.
 
-**해결: 컬럼 자체 제거**
+**1차 접근: 컬럼 제거 → 새로운 OOM 유발**
 ```kotlin
-@Entity
-class Group(...) {
-    // member_counter 없음 → Participate COUNT()로 항상 정확한 값
+// 잘못된 접근 — LAZY 컬렉션 전체 로딩 → OOM
+val participations: MutableList<Participate> = mutableListOf()
+val memberCount: Int get() = participations.size  // 999명이면 999개 엔티티 로딩
+```
+`participations.size` 호출 시 JPA가 LAZY 컬렉션 전체를 Heap에 적재한다.
+정원 체크를 위해 999개 엔티티를 메모리에 올리는 것은 OOM 시한폭탄이다.
 
-    @OneToMany(mappedBy = "group")
-    val participations: MutableList<Participate> = mutableListOf()
-
-    val memberCount: Int get() = participations.size
-    fun isFull(): Boolean = memberCount >= memberMaxCount
-}
+**2차 접근: COUNT 쿼리 → TOCTOU 레이스 컨디션**
+```kotlin
+// COUNT 조회 후 INSERT: 두 요청이 동시에 count=4 확인 → 둘 다 삽입 가능
+val count = participateRepository.countByGroupId(groupId)  // count=4 확인
+if (count >= max) throw GroupFullException()
+participateRepository.save(Participate(...))  // 두 스레드가 동시에 여기 도달
 ```
 
-Lock을 거는 것보다 역정규화 컬럼 자체를 제거하는 것이 근본적 해결이다.
+**최종 해결: member_counter 복원 + DB 레벨 원자적 UPDATE**
+```kotlin
+// GroupRepository
+@Modifying
+@Query("""
+    UPDATE Group g SET g.memberCounter = g.memberCounter + 1
+    WHERE g.id = :groupId AND g.memberCounter < g.memberMaxCount
+""")
+fun incrementMemberCounterIfNotFull(groupId: Long): Int
+// 반환값: 1 = 성공, 0 = 정원 초과
+```
+
+조건 확인과 증가가 단일 원자 연산 → Lost Update 없음 + 엔티티 로딩 없음.
+비관적 락보다 가볍고, TOCTOU보다 안전하다.
 
 **면접 답변**
-> "Lock으로 증상을 치료하는 것보다 역정규화를 제거해 부정확할 여지 자체를 없앴습니다."
+> "컬럼 제거가 Lost Update를 해결하지만 LAZY 컬렉션 전체 로딩이라는 새로운 OOM을 만든다는 것을 발견했습니다. 최종적으로 member_counter를 유지하되 DB 레벨의 원자적 UPDATE를 사용해 두 문제를 동시에 해결했습니다."
 
 ---
 
@@ -303,7 +319,7 @@ Read
 
 ## 최종 자소서 한 문단
 
-> "Flask로 구현한 코테독촉기를 Kotlin + Spring Boot로 마이그레이션하면서, 레거시 코드의 숨은 결함 11가지를 발견하고 교정했습니다. 엔티티 레벨에서는 JPA 영속성 컨텍스트 오동작을 유발하는 복합키를 대리키 + UNIQUE 제약으로 교정하고, member_counter의 Lost Update를 역정규화 제거로 원천 차단했습니다. 쿼리 레벨에서는 함수 조건으로 인한 인덱스 무력화를 범위 파라미터로 교정하고, 100건 단건 upsert를 JdbcTemplate batchUpdate로 전환했습니다. 랭킹 시스템은 DB의 O(N log N) DENSE_RANK()를 Redis ZSET으로 오프로딩하되, Atomic RENAME으로 마이크로 아웃티지를 제거하고, Lua ZADD GT 스크립트로 배치와 실시간 증분 간의 Lost Update를 방지했습니다. Cache Miss 시에는 O(1) 대신 O(log N)으로 우아하게 저하하는 Graceful Degradation을 적용해 가용성을 최우선으로 지켰습니다."
+> "Flask 기반 코테독촉기를 Kotlin/Spring Boot로 마이그레이션하며, RDBMS의 윈도우 함수 연산이 유발하는 O(N log N) 전체 정렬 병목을 해소하기 위해 Redis ZSET으로 랭킹 시스템을 오프로딩했습니다. 이 과정에서 발생하는 이기종 스토리지 간의 갱신 손실(Lost Update)을 방어하기 위해 Lua 스크립트로 멱등성을 보장하고, Cache Miss 발생 시 O(1) 해시 조회 대신 O(log N) ZREVRANK로 우회하는 우아한 성능 저하(Graceful Degradation)를 적용했습니다. 결과적으로 데이터 정합성의 희생 없이 시스템 가용성을 방어하며 p95 응답 속도를 정량적으로 개선할 수 있었습니다."
 
 ---
 
