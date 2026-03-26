@@ -54,12 +54,36 @@ class RankingRedisRepository(private val redisTemplate: StringRedisTemplate) {
             .toDenseRankEntries()
     }
 
-    // 사용자 개별 Dense Rank: O(1) HGET — 데이터 이동 없음
-    // 배치가 사전 계산한 HASH에서 직접 조회
-    fun getUserDenseRank(userId: Long, yearMonth: YearMonth): Long? =
-        redisTemplate.opsForHash<String, String>()
-            .get(denseRankKey(yearMonth), userId.toString())
-            ?.toLong()
+    // 사용자 개별 Dense Rank — Graceful Degradation
+    //
+    // HASH 구조: score(점수) → denseRank
+    //   - userId → rank 가 아님
+    //   - 같은 점수를 가진 유저가 100명이어도 HASH 엔트리는 1개
+    //   - Cache Miss 조건: "배치 이후 처음 등장한 새 점수"일 때만 발생
+    //
+    // Cache Hit  O(1): 배치가 구워둔 score → rank 즉시 반환
+    // Cache Miss O(log N): 실시간 증분으로 새 점수가 생긴 상태
+    //   → ZREVRANK(일반 순위)로 우회. 동점자 처리는 일시 불완전하나
+    //      다음 배치가 돌 때까지만의 비즈니스 오차 — 시스템 가용성 우선
+    fun getUserDenseRank(userId: Long, yearMonth: YearMonth): Long? {
+        val zsetKey = rankKey(yearMonth)
+        val hashKey = denseRankKey(yearMonth)
+
+        // 1. 내 점수 조회 O(1)
+        val myScore = redisTemplate.opsForZSet().score(zsetKey, userId.toString())
+            ?: return null
+
+        // 2. 해당 점수의 Dense Rank 조회 O(1)
+        val cachedRank = redisTemplate.opsForHash<String, String>()
+            .get(hashKey, myScore.toLong().toString())
+
+        // 3. Cache Hit
+        if (cachedRank != null) return cachedRank.toLong()
+
+        // 4. Cache Miss — Graceful Degradation
+        return redisTemplate.opsForZSet().reverseRank(zsetKey, userId.toString())
+            ?.plus(1)
+    }
 
     // ── Batch (자가 치유 스케줄러에서 호출) ───────────────────────────────────
 
@@ -86,10 +110,13 @@ class RankingRedisRepository(private val redisTemplate: StringRedisTemplate) {
 
         if (allEntries.isEmpty()) return
 
+        // score → denseRank 매핑 (userId → rank 가 아님)
+        // 같은 점수 = 같은 Dense Rank → associate가 자동으로 중복 제거
+        // HASH 크기 = unique score 수 ≪ 전체 유저 수
         val denseRankMap: Map<String, String> = allEntries
             .map { Pair(it.value!!.toLong(), it.score!!.toLong()) }
             .toDenseRankEntries()
-            .associate { it.userId.toString() to it.rank.toString() }
+            .associate { it.commitCount.toString() to it.rank.toString() }
 
         // 1. Shadow key에 먼저 쓰기
         redisTemplate.opsForHash<String, String>().putAll(tempKey, denseRankMap)
