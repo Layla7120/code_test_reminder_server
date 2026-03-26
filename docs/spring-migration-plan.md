@@ -11,9 +11,9 @@
 부하 테스트(k6)로 **p95 4,234ms → 86ms** 성능 개선 경험이 있다.
 
 이 프로젝트를 Kotlin + Spring Boot로 마이그레이션하면서:
-1. 레거시 코드에 숨어 있던 **데이터 정합성 결함 3개**를 발견
-2. 이를 엔티티 설계 단에서부터 방어하는 구조로 교정
-3. 동일 조건(시드 데이터, 커넥션 풀 설정)에서 **Flask vs Spring Boot p95 재측정**
+1. 레거시 코드에 숨어 있던 **데이터 정합성 · 성능 결함**을 발견
+2. 엔티티 설계 단에서부터 방어하는 구조로 교정
+3. 동일 조건(시드 데이터, 커넥션 풀)에서 **Flask vs Spring Boot p95 재측정**
 
 ---
 
@@ -21,7 +21,7 @@
 
 | 항목 | Flask (레거시) | Spring Boot (목표) |
 |------|--------------|------------------|
-| 언어/프레임워크 | Python 3.11 + Flask 3.1 | Kotlin + Spring Boot 3.2 |
+| 언어/프레임워크 | Python 3.11 + Flask 3.1 | Kotlin + Spring Boot 4.0 |
 | ORM | SQLAlchemy 2.0 | Spring Data JPA (Hibernate) |
 | DB | MySQL (Cloud SQL) | MySQL (동일) |
 | 캐싱 | Flask-Caching (SimpleCache) | Spring Cache + Redis |
@@ -31,283 +31,290 @@
 
 ---
 
-## 레거시에서 발견한 설계 결함 3가지
+## 레거시에서 발견한 설계 결함 — 전체 발전 과정
 
-> 이 3가지가 자소서와 면접의 핵심 소재다.
-> "단순히 언어를 바꾼 게 아니라, 기존 코드의 무엇이 왜 문제였는지 발견하고 고쳤다"는 것을 보여준다.
+### 1단계: 엔티티 설계 (데이터 정합성)
 
----
+#### 결함 1. Participate 복합키
 
-### 결함 1. Participate 테이블의 복합키(Composite Key)
-
-#### 레거시 코드 (Flask)
+**레거시 코드 (Flask)**
 ```python
 class Participate(db.Model):
-    group_id = db.Column(db.Integer, db.ForeignKey('group.group_id'), primary_key=True)
-    user_id  = db.Column(db.Integer, db.ForeignKey('users.user_id'), primary_key=True)
+    group_id = db.Column(db.Integer, primary_key=True)
+    user_id  = db.Column(db.Integer, primary_key=True)
 ```
-`group_id + user_id`를 묶어서 PK로 사용하고 있다.
 
-#### 왜 문제인가
-JPA(Java/Kotlin의 ORM)에서 복합키를 구현하려면 `@EmbeddedId` 또는 `@IdClass`를 써야 한다.
-이 방식에는 두 가지 함정이 있다.
+**왜 문제인가**
+JPA에서 복합키는 `@EmbeddedId` 또는 `@IdClass`가 필요하다.
+`equals()` / `hashCode()` 누락 시 1차 캐시(영속성 컨텍스트)가 같은 행을 두 번 올리는 오동작이 생긴다.
 
-1. **`equals()` / `hashCode()` 직접 구현 필수**
-   JPA의 1차 캐시(영속성 컨텍스트)는 객체를 `equals()`로 구분한다.
-   이를 빠트리면 같은 행이 캐시에 두 번 올라가서 데이터 불일치가 발생한다.
-
-2. **merge 연산 시 예측 불가한 동작**
-   복합키 엔티티를 수정 후 `merge()`하면 Hibernate가 새 객체인지 기존 객체인지
-   판단하지 못해 INSERT/UPDATE 중 하나를 잘못 선택하는 버그가 생길 수 있다.
-
-#### 해결책: 대리키(Surrogate Key) 도입
+**해결: 대리키 + UNIQUE 제약**
 ```kotlin
 @Entity
-@Table(
-    name = "participate",
-    uniqueConstraints = [
-        // 복합키가 갖던 "한 유저는 한 그룹에 한 번만" 의미는
-        // UNIQUE 제약으로 그대로 보존
-        UniqueConstraint(name = "uk_participate_group_user", columnNames = ["group_id", "user_id"])
-    ]
-)
+@Table(uniqueConstraints = [UniqueConstraint(columnNames = ["group_id", "user_id"])])
 class Participate(
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id", nullable = false, updatable = false)
     val group: Group,
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, updatable = false)
     val user: User,
 ) {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0  // 인위적 PK 추가
+    val id: Long = 0  // 비즈니스 식별은 UNIQUE 제약이, JPA 관리는 숫자 PK가 담당
 }
 ```
 
-**핵심 논리**: 복합키가 갖던 비즈니스 의미(중복 참여 방지)는 UNIQUE 제약으로 DB가 보장한다.
-대신 JPA 관리용 PK는 단순한 숫자로 분리한다. 역할을 분리한 것이다.
-
-**면접 답변 포인트**:
-> "JPA의 영속성 컨텍스트는 PK 기반으로 객체를 관리합니다. 복합키를 쓰면
-> equals/hashCode 구현 누락 시 1차 캐시가 오동작합니다. 비즈니스 식별 역할과
-> 기술적 PK 역할을 분리하는 것이 더 안전합니다."
+**면접 답변**
+> "비즈니스 식별 역할과 JPA 관리용 PK를 분리했습니다. 복합키가 갖던 '중복 참여 방지' 의미는 UNIQUE 제약이 DB 레벨에서 보장합니다."
 
 ---
 
-### 결함 2. POST /commits 동시 호출 Race Condition
+#### 결함 2. Group.member_counter Lost Update
 
-#### 레거시 코드 (Flask)
+**레거시 코드 (Flask)**
 ```python
-# on_duplicate_key_update로 중복 sha를 DB에서 처리
-db.session.execute(
-    insert(Commit).on_duplicate_key_update(sha=Commit.sha)
-)
-```
-
-#### 왜 문제인가
-클라이언트가 GitHub 커밋 페칭 API를 **거의 동시에 3번 호출**하면:
-
-```
-요청 A → GitHub API 호출 시작
-요청 B → GitHub API 호출 시작  (A가 끝나기 전)
-요청 C → GitHub API 호출 시작  (A, B가 끝나기 전)
-```
-
-세 요청이 동시에 GitHub API를 호출하고, 동시에 동일한 커밋 목록을 INSERT 시도한다.
-`on_duplicate_key_update`가 충돌을 처리해주지만:
-- GitHub API를 3배로 중복 호출 (API rate limit 낭비)
-- DB 락 경합 발생
-- 불필요한 트랜잭션 3개가 동시에 실행
-
-레거시는 **이미 문제가 생긴 다음에 DB가 수습하는** 수동적 구조다.
-
-#### 해결책: Redis 분산 락으로 Application 레벨 멱등성 확보
-```kotlin
-fun fetchAndSaveCommits(userId: Long) {
-    val lockKey = "commit:fetch:lock:$userId"
-
-    // setIfAbsent = "없으면 세팅, 있으면 false 반환" (원자적 연산)
-    val acquired = redisTemplate.opsForValue()
-        .setIfAbsent(lockKey, "locked", Duration.ofSeconds(30))
-
-    if (acquired != true) {
-        // 이미 처리 중 → 두 번째, 세 번째 요청을 즉시 차단
-        throw CommitFetchAlreadyInProgressException()
-    }
-
-    try {
-        // GitHub API 호출 → 커밋 저장 (단 한 번만 실행됨)
-    } finally {
-        redisTemplate.delete(lockKey)  // 작업 완료 시 락 해제
-    }
-}
-```
-
-**핵심 논리**: "문제가 생기면 DB가 처리" → "문제 자체가 생기지 않도록 Application이 막는다".
-이것이 **멱등성(Idempotency)** 설계다. 같은 요청을 N번 보내도 결과가 1번과 동일하다.
-
-**면접 답변 포인트**:
-> "레거시는 DB의 ON DUPLICATE KEY에 의존해 중복을 수습했습니다.
-> 분산 환경에서는 Application 레벨에서 먼저 차단하는 것이 맞습니다.
-> Redis의 SETNX(setIfAbsent)는 원자적 연산이라 분산 서버 환경에서도 안전합니다."
-
----
-
-### 결함 3. Group.member_counter의 갱신 손실(Lost Update)
-
-#### 레거시 코드 (Flask)
-```python
-class Group(db.Model):
-    member_counter = db.Column(db.Integer, default=0)
-
-# 그룹 참여 시
-group.member_counter += 1
+group.member_counter += 1  # 동시 요청 시 갱신 손실 발생
 db.session.commit()
 ```
 
-#### 왜 문제인가
-동시에 두 유저가 마지막 자리(4명 → 5명 정원)에 참여 요청을 보내면:
+동시에 두 유저가 마지막 자리에 참여하면 둘 다 counter=4를 읽고 5로 저장 → 실제로 6명인데 counter는 5.
 
-```
-유저 A: member_counter 읽음 → 4
-유저 B: member_counter 읽음 → 4  (A가 커밋하기 전)
-유저 A: 4 + 1 = 5, 저장
-유저 B: 4 + 1 = 5, 저장  ← A의 업데이트를 덮어씀
-결과: 실제로 6명인데 counter는 5
-```
-
-이것이 **갱신 손실(Lost Update)** 이다. 정원 초과 참여가 가능해지는 버그다.
-
-#### 해결책 A — 비관적 락 (선택지 1)
-```kotlin
-@Lock(LockModeType.PESSIMISTIC_WRITE)  // SELECT FOR UPDATE
-fun findByIdWithLock(groupId: Long): Group?
-
-fun joinGroup(userId: Long, groupId: Long) {
-    val group = groupRepository.findByIdWithLock(groupId)
-    // 락을 잡은 상태에서 확인 → 다른 트랜잭션은 이 락이 풀릴 때까지 대기
-    if (group.isFull()) throw GroupFullException()
-    participateRepository.save(Participate(group, user))
-}
-```
-
-#### 해결책 B — member_counter 컬럼 자체를 제거 (채택)
+**해결: 컬럼 자체 제거**
 ```kotlin
 @Entity
 class Group(...) {
-    // member_counter 컬럼 없음
-    // participations 관계에서 COUNT()로 항상 정확한 값을 가져옴
+    // member_counter 없음 → Participate COUNT()로 항상 정확한 값
 
     @OneToMany(mappedBy = "group")
     val participations: MutableList<Participate> = mutableListOf()
 
-    val memberCount: Int get() = participations.size  // 항상 정확
-
+    val memberCount: Int get() = participations.size
     fun isFull(): Boolean = memberCount >= memberMaxCount
 }
 ```
 
-**왜 B를 선택했나**:
-비관적 락은 counter 갱신 문제를 해결하지만, counter가 존재하는 한 "부정확할 수 있는 필드"가 남아 있다.
-counter 컬럼 자체를 제거하면 부정확할 여지 자체가 없다.
-역정규화(Denormalization)가 원인이었으므로 정규화로 되돌리는 것이 근본적인 해결이다.
+Lock을 거는 것보다 역정규화 컬럼 자체를 제거하는 것이 근본적 해결이다.
 
-단, 그룹 참여 동시성은 여전히 비관적 락으로 보호한다 — 정원 초과를 막기 위해.
-
-**면접 답변 포인트**:
-> "member_counter는 성능을 위한 역정규화였지만, 동시성 환경에서 Lost Update를
-> 발생시키는 시한폭탄이었습니다. Lock을 추가하는 것보다 역정규화를 제거하는 것이
-> 문제의 근원을 없애는 방법이라 판단했습니다."
+**면접 답변**
+> "Lock으로 증상을 치료하는 것보다 역정규화를 제거해 부정확할 여지 자체를 없앴습니다."
 
 ---
 
-## 실행 계획 (4~5시간)
+#### 결함 3. POST /commits Race Condition
 
-### Hour 1 — Spring Boot 프로젝트 뼈대
-
-```
-build.gradle.kts 핵심:
-  - kotlin-spring 플러그인: Kotlin 클래스는 기본이 final → JPA 프록시 생성 불가
-                            이 플러그인이 자동으로 open 처리해준다
-  - kotlin-jpa 플러그인: JPA는 기본 생성자가 필요 → 자동 생성해준다
-  - HikariCP pool-size=20 (Flask tuned 시나리오와 동일 조건)
+**레거시 코드 (Flask)**
+```python
+# DB의 on_duplicate_key_update에만 의존 — 이미 문제가 생긴 후 수습
+db.session.execute(insert(Commit).on_duplicate_key_update(...))
 ```
 
-### Hour 2 — 엔티티 5개 (방어적 설계 적용)
+동시에 3번 호출하면 GitHub API 3번 중복 호출 + DB 락 경합이 발생한다.
 
-| 엔티티 | 핵심 설계 결정 |
-|--------|-------------|
-| Commit | 모든 필드 `updatable = false`, `sha` UNIQUE → 불변 |
-| Group | `member_counter` 제거, `isFull()` 엔티티 메서드 |
-| Participate | 대리키 + UNIQUE 제약 |
-| User | `updateProfile()`, `deactivate()` 메서드로 상태 변경 통제 |
-| History | `solveTime` String 유지 (하위호환) |
+**해결: Redis 분산 락 (멱등성)**
+```kotlin
+val acquired = redisTemplate.opsForValue()
+    .setIfAbsent("commit:fetch:lock:$userId", "1", Duration.ofSeconds(30))
+if (acquired != true) throw CommitFetchAlreadyInProgressException()
+```
 
-### Hour 3 — 서비스 레이어 (결함 3개 수정)
+**면접 답변**
+> "수동적 수습에서 능동적 차단으로. 같은 요청을 N번 보내도 결과가 1번과 동일한 멱등성 설계입니다."
 
-- Redis 분산 락 → 결함 2 해결
-- 비관적 락 → 그룹 정원 초과 방지
-- Native upsert → sha 배치 충돌 처리
+---
 
-### Hour 4 — 랭킹 쿼리 + 캐시 무효화 버그 수정
+### 2단계: Repository 설계 (쿼리 최적화)
+
+#### 결함 4. 인덱스 무력화
+
+**레거시 쿼리**
+```sql
+WHERE YEAR(commit_date) = YEAR(NOW())  -- 컬럼을 함수로 감싸면 인덱스 탐색 불가 → Full Scan
+```
+
+`commit_date`에 인덱스를 걸어뒀는데 `YEAR()`로 감싸면 B-Tree 인덱스가 무용지물이 된다.
+
+**해결: 서비스 레이어에서 범위 파라미터 계산**
+```kotlin
+val thisMonthStart = now.withDayOfMonth(1).withHour(0)...
+// 쿼리에서: commit_date >= :thisMonthStart AND commit_date < :nextMonthStart
+```
+
+#### 결함 5. NOW() 하드코딩으로 테스트 불가
+
+**해결: Clock Bean 주입**
+```kotlin
+@Bean fun clock(): Clock = Clock.system(ZoneId.of("Asia/Seoul"))
+// 테스트에서: Clock.fixed(특정시점) → 원하는 시점 재현 가능
+```
+
+#### 결함 6. 단건 Upsert 루프 (네트워크 100번)
+
+**해결: JdbcTemplate.batchUpdate() + sha 정렬**
+```kotlin
+val sorted = commits.sortedBy { it.sha }  // InnoDB Next-Key Lock 순서 보장 → 데드락 방지
+jdbcTemplate.batchUpdate(SQL, sorted, 100) { ps, commit -> ... }
+// 100건 = 네트워크 1번
+```
+
+#### 결함 7. 단순 집계까지 Native Query 남용
+
+윈도우 함수(`DENSE_RANK()`)가 필요한 랭킹 쿼리만 Native Query를 쓰고, 나머지는 JPQL로 교체했다.
 
 ```kotlin
-// Flask 버그: 새 커밋이 들어와도 60초간 stale 랭킹 유지
-// 수정: @CacheEvict로 커밋 저장 시 캐시 무효화
+// 잔디 그래프 — JPQL (타입 안전, 컴파일 타임 오류 검출)
+@Query("SELECT c.commitDate AS commitDate, c.level AS level FROM Commit c WHERE ...")
+fun findCommitSummariesByUserAndDateRange(...): List<CommitSummaryProjection>
 
-@Cacheable("rank_top30")
-fun getTop30(): List<RankResponse> { ... }
-
-@CacheEvict("rank_top30", allEntries = true)
-fun saveCommits(...) { ... }  // 쓰기 시 무효화
-```
-
-### Hour 5 — k6 동일 조건 재측정
-
-```
-측정 조건:
-  - 동일 시드 데이터 (seed_data.py: 100유저, 5만 커밋)
-  - 동일 VU 구성 (tuned 시나리오: 0→20→50→100)
-  - 동일 커넥션 풀 (pool=20)
-
-측정 대상: GET /rank, GET /group/info
-비교: Flask p95 86ms vs Spring Boot p95 ?ms
+// DTO Projection — 엔티티 전체 로딩 금지
+// List<Commit> 반환 시 영속성 컨텍스트에 스냅샷 1,000개 로드 → OOM
 ```
 
 ---
 
-## 기대 성과 (자소서 작성용)
+### 3단계: Redis 랭킹 시스템 (아키텍처 전환)
 
-| 항목 | Flask | Spring Boot |
-|------|-------|-------------|
-| p95 (최적화 전) | 4,234ms | 측정 예정 |
-| p95 (최적화 후) | 86ms | 측정 예정 |
-| Participate 복합키 버그 | 잠재적 캐시 오동작 | 대리키로 원천 차단 |
-| 커밋 중복 페칭 | DB가 수습 | App 레벨 차단 |
-| member_counter Lost Update | 버그 잠재 | 컬럼 제거 |
-| 캐시 무효화 | 버그 있음 | @CacheEvict 수정 |
+#### 결함 8. DENSE_RANK() DB 연산의 O(N log N) 병목
+
+`DENSE_RANK()`는 전체 유저 정렬 후 LIMIT 30을 적용한다.
+유저 10만 명이면 매 호출마다 DB CPU 스파이크.
+
+**해결: Redis ZSET으로 랭킹 연산 오프로딩**
+
+```
+Redis Keys
+  rank:commit:{yyyyMM}   ZSET   userId → score     실시간 ZINCRBY 유지
+  rank:dense:{yyyyMM}    HASH   score  → denseRank  배치 사전 계산
+```
+
+| | DB DENSE_RANK() | Redis ZSET |
+|--|--|--|
+| 읽기 복잡도 | O(N log N) | O(log N + 30) |
+| 사용자 랭킹 조회 | O(N log N) | O(1) Cache Hit / O(log N) Cache Miss |
 
 ---
 
-## 면접 예상 질문 & 답변 요약
+#### 결함 9. 마이크로 아웃티지 (delete + 재삽입 간극)
 
-**Q. 왜 Flask를 Spring Boot로 옮겼나요?**
-> Python GIL로 인한 단일 스레드 한계와 SimpleCache의 무효화 부재 버그를 발견했고,
-> JVM 멀티스레딩과 Redis 분산 캐시로 전환하면서 정량적으로 비교하고 싶었습니다.
+**초기 구현 문제**
+```kotlin
+redisTemplate.delete(key)          // 이 순간 ~
+redisTemplate.executePipelined { } // 여기까지 조회하면 emptyList 반환
+// 매시간 정각마다 서비스 덜컹거림
+```
 
-**Q. 마이그레이션에서 가장 어려운 점이 뭐였나요?**
-> 단순 코드 변환이 아니라 레거시의 숨은 결함을 찾는 것이었습니다.
-> member_counter Lost Update, 커밋 중복 페칭 Race Condition, 복합키 JPA 관리 문제
-> 세 가지를 엔티티 설계 단에서부터 구조적으로 방어하는 것이 핵심이었습니다.
+**해결: Shadow Key + Atomic RENAME**
+```kotlin
+// 1. temp 키에 먼저 쓰기
+redisTemplate.opsForHash<String, String>().putAll(tempKey, denseRankMap)
+// 2. 원자적 교체 O(1) — 다운타임 0ms
+redisTemplate.rename(tempKey, denseKey)
+```
 
-**Q. @EmbeddedId 대신 대리키를 쓴 이유는?**
-> JPA 1차 캐시는 PK로 객체를 식별합니다. 복합키에서 equals/hashCode 누락 시
-> 같은 행이 캐시에 두 번 올라가는 오동작이 생깁니다. 비즈니스 식별(UNIQUE 제약)과
-> 기술적 PK를 분리하는 것이 더 안전합니다.
+---
 
-**Q. 비관적 락 vs 낙관적 락, 왜 비관적 락을 선택했나요?**
-> 그룹 참여는 정원이 꽉 찬 상황에서 동시 요청이 몰릴 수 있습니다.
-> 낙관적 락은 충돌 후 예외를 던지고 클라이언트가 재시도해야 하는데,
-> 정원 초과 같은 비즈니스 규칙 위반은 재시도 자체를 허용하면 안 됩니다.
-> 따라서 먼저 락을 잡고 검사하는 비관적 락이 맞습니다.
+#### 결함 10. Lost Update (배치 ZADD가 실시간 ZINCRBY를 덮어씀)
+
+**시나리오**
+1. 스케줄러가 DB에서 userId=1의 커밋 수 100개 읽음
+2. 유저가 새 커밋 푸시 → ZINCRBY → Redis 101점
+3. 스케줄러가 100점으로 RENAME → 101이 100으로 롤백
+
+**해결: Lua ZADD GT 스크립트**
+```lua
+-- 현재값보다 클 때만 업데이트 (실시간 증분 보호)
+local current = redis.call('ZSCORE', KEYS[1], ARGV[1])
+if current == false or tonumber(ARGV[2]) > tonumber(current) then
+    return redis.call('ZADD', KEYS[1], ARGV[2], ARGV[1])
+end
+return 0
+```
+
+---
+
+#### 결함 11. getUserDenseRank OOM (수만 건 JVM Heap 적재)
+
+**초기 구현 문제**
+```kotlin
+// 내 점수보다 높은 모든 멤버를 JVM Heap으로 → 50,000등이면 49,999건 로딩
+.reverseRangeByScoreWithScores(key, myScore + 0.001, Double.MAX_VALUE)
+?.toSet()  // OOM 발생 지점
+```
+
+**해결: score → denseRank HASH 사전 계산 + Graceful Degradation**
+
+```
+HASH 구조: score → denseRank
+  - userId → rank 가 아님
+  - 같은 점수 100명 = HASH 엔트리 1개 (훨씬 작음)
+  - Cache Miss 조건: 배치 이후 처음 등장한 새 점수일 때만
+```
+
+```kotlin
+fun getUserDenseRank(userId: Long, yearMonth: YearMonth): Long? {
+    // 1. 내 점수 O(1)
+    val myScore = redisTemplate.opsForZSet().score(zsetKey, userId.toString()) ?: return null
+
+    // 2. score → rank HASH 조회 O(1)
+    val cachedRank = redisTemplate.opsForHash<String, String>().get(hashKey, myScore.toLong().toString())
+
+    // 3. Cache Hit → 즉시 반환
+    if (cachedRank != null) return cachedRank.toLong()
+
+    // 4. Cache Miss → Graceful Degradation
+    // 동점자 처리는 일시 불완전하나 서버는 안전, 배치 후 자동 복구
+    return redisTemplate.opsForZSet().reverseRank(zsetKey, userId.toString())?.plus(1)
+}
+```
+
+**면접 답변**
+> "Eventual Consistency의 빈틈을 인정하고 Fallback 전략을 썼습니다. 평소에는 O(1) Cache Hit, 실시간 점수 변동으로 캐시 미스가 났을 때만 O(log N) ZREVRANK로 우회합니다. 동점자 처리가 잠깐 부정확할 수 있지만, 시스템의 가용성과 응답 속도를 더 중요하게 판단했습니다."
+
+---
+
+## 자가 치유 스케줄러 전체 흐름
+
+```
+매시간 정각 RankingSelfHealingScheduler
+  │
+  ├─ Step 1: DB → Redis score ZSET 보정
+  │    findMonthlyCommitCountPerUser(from, to)
+  │    → Lua ZADD GT (실시간 증분 보호, Lost Update 방지)
+  │
+  └─ Step 2: Dense Rank HASH 재계산
+       score ZSET 전체 읽기 (배치 — 요청 경로 아님)
+       → toDenseRankEntries() (Kotlin Dense Rank 계산)
+       → score → denseRank 매핑
+       → Shadow Key 쓰기 → RENAME (원자적 교체)
+
+
+실시간 Write (커밋 저장 시)
+  DB bulkUpsert 성공
+  → @TransactionalEventListener(AFTER_COMMIT)
+  → ZINCRBY rank:commit:{yyyyMM} {count} {userId}
+  → 실패해도 스케줄러가 최대 1시간 내 자동 복구
+
+
+Read
+  GET /rank
+    → ZREVRANGE 0 29 WITHSCORES → toDenseRankEntries() (30건)
+  GET /rank/users?user_id=N
+    → ZSCORE → HGET score:denseRank → O(1)
+    → Cache Miss → ZREVRANK → O(log N) Graceful Degradation
+```
+
+---
+
+## 최종 자소서 한 문단
+
+> "Flask로 구현한 코테독촉기를 Kotlin + Spring Boot로 마이그레이션하면서, 레거시 코드의 숨은 결함 11가지를 발견하고 교정했습니다. 엔티티 레벨에서는 JPA 영속성 컨텍스트 오동작을 유발하는 복합키를 대리키 + UNIQUE 제약으로 교정하고, member_counter의 Lost Update를 역정규화 제거로 원천 차단했습니다. 쿼리 레벨에서는 함수 조건으로 인한 인덱스 무력화를 범위 파라미터로 교정하고, 100건 단건 upsert를 JdbcTemplate batchUpdate로 전환했습니다. 랭킹 시스템은 DB의 O(N log N) DENSE_RANK()를 Redis ZSET으로 오프로딩하되, Atomic RENAME으로 마이크로 아웃티지를 제거하고, Lua ZADD GT 스크립트로 배치와 실시간 증분 간의 Lost Update를 방지했습니다. Cache Miss 시에는 O(1) 대신 O(log N)으로 우아하게 저하하는 Graceful Degradation을 적용해 가용성을 최우선으로 지켰습니다."
+
+---
+
+## 면접 예상 질문 & 답변
+
+| 질문 | 핵심 답변 |
+|------|---------|
+| 왜 Flask → Spring Boot? | GIL 단일 스레드 한계 + SimpleCache 무효화 버그 발견. JVM 멀티스레딩 + Redis 분산 캐시로 정량 비교 |
+| 복합키 대신 대리키를 쓴 이유? | JPA 1차 캐시는 PK로 식별. 비즈니스 규칙(UNIQUE)과 기술적 PK 분리 |
+| member_counter를 Lock 대신 제거한 이유? | Lock은 증상 치료, 역정규화 제거는 원인 제거 |
+| DENSE_RANK()를 Redis로 옮긴 이유? | O(N log N) → O(log N). 유저 수와 무관한 응답 시간 보장 |
+| Cache Miss 때 왜 O(N) 대신 ZREVRANK? | 시스템 가용성 > 순간적 정확성. 배치 후 자동 복구되는 Eventual Consistency 수용 |
+| 배치와 실시간 간 Lost Update 방어? | Lua ZADD GT: Redis 현재값 > DB값이면 덮어쓰지 않음 |
+| RENAME이 왜 안전한가? | Redis 단일 스레드 기반 원자 연산 O(1). delete + 재삽입 간극 없음 |
