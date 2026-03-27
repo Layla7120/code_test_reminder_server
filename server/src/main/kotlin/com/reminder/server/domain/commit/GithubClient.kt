@@ -2,6 +2,7 @@ package com.reminder.server.domain.commit
 
 import com.reminder.server.global.exception.GithubApiException
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
@@ -24,9 +25,10 @@ data class GithubCommitResponse(
 }
 
 @Component
+@Profile("!load-test")
 class GithubClient(
     @Value("\${github.token}") private val token: String,
-) {
+) : GithubClientPort {
     private val restClient = RestClient.builder()
         .baseUrl("https://api.github.com")
         .defaultHeader("Authorization", "token $token")
@@ -38,7 +40,7 @@ class GithubClient(
     private val commitPattern = Regex("""\[(.*?)] Title: (.*?), Time: .*?, Memory: .*? -""")
     private val githubDateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
 
-    fun fetchCommits(githubId: String, repositoryName: String): List<CommitInsertDto> {
+    override fun fetchCommits(githubId: String, repositoryName: String): List<CommitInsertDto> {
         val response = try {
             restClient.get()
                 .uri("/repos/{owner}/{repo}/commits", githubId, repositoryName)
@@ -56,7 +58,7 @@ class GithubClient(
         return response.mapNotNull { it.toInsertDto() }
     }
 
-    fun existsRepository(githubId: String, repositoryName: String): Boolean {
+    override fun existsRepository(githubId: String, repositoryName: String): Boolean {
         return try {
             restClient.get()
                 .uri("/repos/{owner}/{repo}", githubId, repositoryName)

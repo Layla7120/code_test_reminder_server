@@ -187,9 +187,17 @@ function testGroupEndpoint() {
 }
 
 /**
- * POST /commits — Write 부하
- * mixed 시나리오 전용: 실제 GitHub 호출 없이 존재하는 유저 ID만 사용
- * Redis ZINCRBY 경쟁 조건(Lost Update) 방어 검증이 목적
+ * POST /commits — Write 부하 (mixed 시나리오 전용)
+ *
+ * 서버를 load-test 프로파일로 실행해야 함:
+ *   SPRING_PROFILES_ACTIVE=load-test ./gradlew bootRun
+ *
+ * MockGithubClient(@Profile("load-test"))가 GitHub API 대신 주입되어
+ * 외부 호출 없이 전체 경로를 통과:
+ *   DB Bulk Insert → CommitSavedEvent → Redis ZINCRBY
+ *
+ * 이 경로를 통과해야 Redis ZSET 갱신 경쟁 조건(Lost Update)이 실제로 발생함.
+ * POST /history로 대체하면 이벤트가 발행되지 않아 Redis 정합성 검증이 불가.
  */
 function testWriteEndpoint() {
   const start = Date.now();
@@ -200,7 +208,7 @@ function testWriteEndpoint() {
   );
   writeLatency.add(Date.now() - start);
 
-  // 200(성공), 409(분산 락 중복), 404(유저 없음) 모두 정상 — 5xx만 에러
+  // 200(성공), 409(분산 락 중복) 정상 — 5xx만 에러
   const ok = check(res, { "write: not 5xx": (r) => r.status < 500 });
   if (!ok) writeErrors.add(1);
 }

@@ -18,7 +18,7 @@ class CommitService(
     private val commitRepository: CommitRepository,
     private val commitJdbcRepository: CommitJdbcRepository,
     private val userRepository: UserRepository,
-    private val githubClient: GithubClient,
+    private val githubClient: GithubClientPort,
     private val redisTemplate: StringRedisTemplate,
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
