@@ -51,3 +51,16 @@ allOpen {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+// bootRun 실행 시 프로젝트 루트의 .env 파일을 자동으로 환경 변수로 주입
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+	val envFile = project.rootDir.parentFile.resolve(".env")
+	if (envFile.exists()) {
+		envFile.readLines()
+			.filter { it.isNotBlank() && !it.startsWith("#") && "=" in it }
+			.forEach { line ->
+				val (key, value) = line.split("=", limit = 2)
+				environment(key.trim(), value.trim())
+			}
+	}
+}
