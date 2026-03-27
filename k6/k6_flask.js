@@ -74,6 +74,24 @@ const scenarios = {
     vus: 30,
     duration: "30s",
   },
+
+  /**
+   * [mixed] Spring Boot mixed 시나리오와 대비용
+   *
+   * Flask에는 Redis 캐시 계층이 없어 GET /rank가 항상 DB DENSE_RANK()를 실행함.
+   * Spring Boot mixed는 Write+Read 동시 부하(VU 50, 1분)에서 p95 24ms를 기록했으나
+   * Flask는 캐시 없는 pure Read 부하만으로 어떤 p95를 보이는지 측정.
+   *
+   * 비교 논점:
+   *   "Spring Boot는 Write가 Redis를 갱신하는 동안에도 Read 경로(Redis HGET)가
+   *    완전히 분리되어 있어 p95 24ms를 유지했다.
+   *    Flask는 Write 없는 동일 조건(VU 50)의 Read에서 p95가 얼마인가?"
+   */
+  mixed: {
+    executor: "constant-vus",
+    vus: 50,   // Spring Boot mixed 동일 VU
+    duration: "1m",
+  },
 };
 
 export const options = {
@@ -81,9 +99,7 @@ export const options = {
     main: scenarios[SCENARIO] || scenarios.exhaustion,
   },
   thresholds: {
-    // 실패율 5% 미만이어야 통과 (장애 재현 시에는 초과 예상)
     error_rate: [{ threshold: "rate<0.05", abortOnFail: false }],
-    // 95% 요청이 2초 이내 응답
     http_req_duration: ["p(95)<2000"],
   },
 };
@@ -156,11 +172,19 @@ function testGroupEndpoint() {
 // ── 메인 실행 ────────────────────────────────────────────────
 export default function () {
   if (SCENARIO === "group") {
-    // 그룹 조회만 집중 테스트
     testGroupEndpoint();
     sleep(0.5);
+  } else if (SCENARIO === "mixed") {
+    // Flask mixed: 캐시 없는 순수 Read 부하
+    // GET /rank → 매 요청마다 DENSE_RANK() DB Full Scan
+    // Spring Boot mixed(Write+Read 동시, p95 24ms)와 대비
+    if (Math.random() < 0.7) {
+      testRankEndpoint();
+    } else {
+      testUserRankEndpoint();
+    }
+    sleep(0.2);
   } else {
-    // 랭킹 조회 위주 (7:3 비율)
     if (Math.random() < 0.7) {
       testRankEndpoint();
     } else {
