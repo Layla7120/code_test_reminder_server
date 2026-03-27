@@ -38,8 +38,10 @@ class GroupService(
         if (participateRepository.existsByGroupAndUser(group, user)) throw AlreadyInGroupException()
 
         // 비밀번호 검증
-        if (group.groupPw != null) {
-            if (password == null || !passwordEncoder.matches(password, group.groupPw))
+        // val로 캡처해야 스마트캐스트 가능 (var 프로퍼티는 null 체크 후에도 스마트캐스트 불가)
+        val storedPw = group.groupPw
+        if (storedPw != null) {
+            if (password == null || !passwordEncoder.matches(password, storedPw))
                 throw GroupPasswordMismatchException()
         }
 
@@ -81,7 +83,7 @@ class GroupService(
     fun changePassword(userId: Long, groupId: Long, newPassword: String) {
         val group = groupRepository.findById(groupId).orElseThrow { GroupNotFoundException(groupId) }
         if (group.owner.id != userId) throw NotGroupOwnerException()
-        group.changePassword(passwordEncoder.encode(newPassword))
+        group.changePassword(passwordEncoder.encode(newPassword) ?: error("비밀번호 인코딩 실패"))
     }
 
     @Transactional(readOnly = true)

@@ -145,3 +145,8 @@ interface UserCommitCountProjection {
     fun getUserId(): Long
     fun getCount(): Long
 }
+
+interface LevelCountProjection {
+    fun getLevel(): String
+    fun getCount(): Long
+}
