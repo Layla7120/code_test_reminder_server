@@ -373,11 +373,13 @@ k6 run --out json=k6_result_before.json k6/k6_flask.js
 k6 run --out json=k6_result_spring.json k6/k6_spring.js
 ```
 
-| 시나리오 | Flask p95 | Spring Boot 목표 | 개선 원인 |
-|---------|-----------|-----------------|----------|
-| tuned (VU 100) | 86ms | < 30ms | Redis HGET O(1) |
-| exhaustion (VU 50) | 2,000ms+ | < 100ms | 커넥션 풀 고갈 → Redis 오프로딩 |
-| redis 전용 (VU 50) | — | < 10ms | HGET 직접 경로 |
+| 시나리오 | Flask p95 | Spring Boot p95 | 개선율 | 개선 원인 |
+|---------|-----------|----------------|--------|----------|
+| tuned (VU 100) | 86ms | **4ms** | **21배** | Redis HGET O(1) |
+| exhaustion (VU 50) | 2,000ms+ | 측정 예정 | - | 커넥션 풀 고갈 → Redis 오프로딩 |
+| redis 전용 (VU 50) | — | 5ms (rank_p95) | - | HGET 직접 경로 |
+
+> 측정 조건: 더미 유저 100명, 커밋 ~50,000건, HikariCP pool-size=20 (Flask tuned 동일)
 
 ---
 
