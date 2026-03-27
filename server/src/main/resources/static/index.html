@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>코테독촉기 API 데모</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+    header { background: #161b22; border-bottom: 1px solid #30363d; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 18px; font-weight: 600; }
+    .badge { background: #238636; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 12px; }
+    .container { max-width: 960px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 240px 1fr; gap: 20px; }
+    .sidebar { display: flex; flex-direction: column; gap: 4px; }
+    .nav-section { font-size: 11px; font-weight: 600; color: #7d8590; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 12px 4px; }
+    .nav-item { padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #8b949e; transition: all 0.1s; display: flex; align-items: center; gap: 8px; }
+    .nav-item:hover, .nav-item.active { background: #21262d; color: #e6edf3; }
+    .nav-item .method { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; min-width: 32px; text-align: center; }
+    .get { background: #0a3622; color: #3fb950; }
+    .post { background: #3d2b16; color: #d29922; }
+    .patch { background: #1b2a3d; color: #58a6ff; }
+    .delete { background: #3d1b1b; color: #f85149; }
+    .panel { display: flex; flex-direction: column; gap: 16px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+    .card-header { padding: 12px 16px; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 10px; background: #1c2128; }
+    .card-title { font-size: 14px; font-weight: 600; }
+    .card-body { padding: 16px; }
+    .form-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-end; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    label { font-size: 12px; color: #7d8590; }
+    input, select { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 7px 10px; color: #e6edf3; font-size: 13px; outline: none; transition: border-color 0.1s; }
+    input:focus, select:focus { border-color: #388bfd; }
+    button { background: #238636; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px; font-weight: 500; padding: 8px 16px; transition: background 0.1s; white-space: nowrap; }
+    button:hover { background: #2ea043; }
+    button.danger { background: #da3633; }
+    button.danger:hover { background: #f85149; }
+    button.secondary { background: #21262d; border: 1px solid #30363d; }
+    button.secondary:hover { background: #30363d; }
+    .response-box { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.6; min-height: 60px; max-height: 300px; overflow: auto; white-space: pre-wrap; color: #e6edf3; }
+    .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+    .status-ok { background: #0a3622; color: #3fb950; }
+    .status-err { background: #3d1b1b; color: #f85149; }
+    .status-pending { background: #1b2a3d; color: #79c0ff; }
+    .url-display { font-family: monospace; font-size: 12px; color: #7d8590; padding: 6px 10px; background: #0d1117; border-radius: 4px; border: 1px solid #21262d; margin-bottom: 10px; word-break: break-all; }
+    .section-hidden { display: none; }
+    .rank-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .rank-table th { text-align: left; padding: 8px 12px; background: #1c2128; color: #7d8590; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .rank-table td { padding: 8px 12px; border-bottom: 1px solid #21262d; }
+    .rank-table tr:last-child td { border-bottom: none; }
+    .grass-grid { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 8px; }
+    .grass-cell { width: 14px; height: 14px; border-radius: 2px; background: #21262d; }
+    .grass-cell.level-1 { background: #0e4429; }
+    .grass-cell.level-2 { background: #006d32; }
+    .grass-cell.level-3 { background: #26a641; }
+    .grass-cell.level-4 { background: #39d353; }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid #30363d; padding: 0 16px; }
+    .tab { padding: 10px 14px; font-size: 13px; cursor: pointer; color: #7d8590; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab.active { color: #e6edf3; border-bottom-color: #f78166; }
+    .server-url-bar { display: flex; gap: 8px; align-items: center; padding: 12px 16px; background: #161b22; border-bottom: 1px solid #30363d; }
+    .server-url-bar label { font-size: 12px; color: #7d8590; white-space: nowrap; }
+    .server-url-bar input { flex: 1; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; display: inline-block; }
+    .dot.offline { background: #f85149; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>🔔</span>
+  <h1>코테독촉기 API</h1>
+  <span class="badge">Spring Boot 4.0</span>
+  <span id="server-status" style="margin-left:auto; font-size:12px; color:#7d8590;">
+    <span class="dot offline" id="status-dot"></span>&nbsp;서버 연결 확인 중...
+  </span>
+</header>
+
+<div class="server-url-bar">
+  <label>Server URL</label>
+  <input type="text" id="base-url" value="http://localhost:8080" placeholder="http://localhost:8080">
+  <button class="secondary" onclick="pingServer()">연결 확인</button>
+</div>
+
+<div class="container">
+  <!-- Sidebar Nav -->
+  <nav class="sidebar">
+    <div class="nav-section">Users</div>
+    <div class="nav-item active" onclick="showSection('login')" data-sec="login">
+      <span class="method post">POST</span> 로그인/생성
+    </div>
+    <div class="nav-item" onclick="showSection('getUser')" data-sec="getUser">
+      <span class="method get">GET</span> 유저 조회
+    </div>
+    <div class="nav-item" onclick="showSection('updateUser')" data-sec="updateUser">
+      <span class="method patch">PATCH</span> 유저 수정
+    </div>
+    <div class="nav-item" onclick="showSection('checkNick')" data-sec="checkNick">
+      <span class="method get">GET</span> 닉네임 확인
+    </div>
+
+    <div class="nav-section">Commits</div>
+    <div class="nav-item" onclick="showSection('fetchCommits')" data-sec="fetchCommits">
+      <span class="method post">POST</span> 커밋 수집
+    </div>
+    <div class="nav-item" onclick="showSection('grass')" data-sec="grass">
+      <span class="method get">GET</span> 잔디 조회
+    </div>
+    <div class="nav-item" onclick="showSection('activity')" data-sec="activity">
+      <span class="method get">GET</span> 주간 활동
+    </div>
+    <div class="nav-item" onclick="showSection('level')" data-sec="level">
+      <span class="method get">GET</span> 난이도 분포
+    </div>
+
+    <div class="nav-section">Rank</div>
+    <div class="nav-item" onclick="showSection('top30')" data-sec="top30">
+      <span class="method get">GET</span> TOP 30
+    </div>
+    <div class="nav-item" onclick="showSection('userRank')" data-sec="userRank">
+      <span class="method get">GET</span> 내 랭킹
+    </div>
+
+    <div class="nav-section">Groups</div>
+    <div class="nav-item" onclick="showSection('createGroup')" data-sec="createGroup">
+      <span class="method post">POST</span> 그룹 생성
+    </div>
+    <div class="nav-item" onclick="showSection('joinGroup')" data-sec="joinGroup">
+      <span class="method post">POST</span> 그룹 참가
+    </div>
+    <div class="nav-item" onclick="showSection('groupInfo')" data-sec="groupInfo">
+      <span class="method get">GET</span> 내 그룹
+    </div>
+    <div class="nav-item" onclick="showSection('searchGroup')" data-sec="searchGroup">
+      <span class="method get">GET</span> 그룹 검색
+    </div>
+  </nav>
+
+  <!-- Main Panel -->
+  <main class="panel">
+
+    <!-- POST /users (login/create) -->
+    <div id="sec-login" class="section">
+      <div class="card">
+        <div class="card-header">
+          <span class="method post">POST</span>
+          <span class="card-title">/users — 로그인 또는 신규 가입</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display" id="url-login">POST http://localhost:8080/users</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>GitHub ID</label>
+              <input type="text" id="login-github" placeholder="Layla7120" value="Layla7120">
+            </div>
+            <div class="form-group">
+              <label>닉네임</label>
+              <input type="text" id="login-nick" placeholder="레이라" value="레이라">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Repository Name</label>
+              <input type="text" id="login-repo" placeholder="algorithm" value="algorithm">
+            </div>
+            <button onclick="loginOrCreate()">요청 보내기</button>
+          </div>
+          <label>응답 <span id="status-login" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-login">응답이 여기 표시됩니다...</div>
+          <p style="margin-top:8px; font-size:12px; color:#7d8590;">
+            💡 응답에서 <code>userId</code>를 복사해 다른 API 테스트에 사용하세요.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /users -->
+    <div id="sec-getUser" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method get">GET</span>
+          <span class="card-title">/users — 유저 조회</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display" id="url-getUser">GET http://localhost:8080/users?userId=1</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="number" id="getUser-id" placeholder="1" value="1" oninput="updateUrl('getUser')">
+            </div>
+            <button onclick="getUser()">요청 보내기</button>
+          </div>
+          <label>응답 <span id="status-getUser" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-getUser">응답이 여기 표시됩니다...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PATCH /users/update -->
+    <div id="sec-updateUser" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method patch">PATCH</span>
+          <span class="card-title">/users/update</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display">PATCH http://localhost:8080/users/update</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="number" id="upd-id" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label>새 닉네임 (선택)</label>
+              <input type="text" id="upd-nick" placeholder="변경할 닉네임">
+            </div>
+            <div class="form-group">
+              <label>새 레포명 (선택)</label>
+              <input type="text" id="upd-repo" placeholder="변경할 레포명">
+            </div>
+            <button onclick="updateUser()">요청 보내기</button>
+          </div>
+          <label>응답 <span id="status-updateUser" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-updateUser">응답이 여기 표시됩니다...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /users/nick_name -->
+    <div id="sec-checkNick" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method get">GET</span>
+          <span class="card-title">/users/nick_name — 닉네임 중복 확인</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display" id="url-checkNick">GET http://localhost:8080/users/nick_name?nickName=레이라</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>닉네임</label>
+              <input type="text" id="checkNick-val" placeholder="레이라" value="레이라" oninput="updateUrl('checkNick')">
+            </div>
+            <button onclick="checkNick()">요청 보내기</button>
+          </div>
+          <label>응답 <span id="status-checkNick" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-checkNick">응답이 여기 표시됩니다...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POST /commits (fetch) -->
+    <div id="sec-fetchCommits" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method post">POST</span>
+          <span class="card-title">/commits — GitHub 커밋 수집</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display">POST http://localhost:8080/commits</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="number" id="fetch-uid" placeholder="1" value="1">
+            </div>
+            <button onclick="fetchCommits()">커밋 수집</button>
+          </div>
+          <label>응답 <span id="status-fetchCommits" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-fetchCommits">응답이 여기 표시됩니다...</div>
+          <p style="margin-top:8px; font-size:12px; color:#7d8590;">
+            💡 Redis 분산 락(30s TTL) — 동일 유저 중복 요청 방지
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /commits/grass -->
+    <div id="sec-grass" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method get">GET</span>
+          <span class="card-title">/commits/grass — 이번달+저번달 잔디</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display" id="url-grass">GET http://localhost:8080/commits/grass?userId=1</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="number" id="grass-uid" placeholder="1" value="1" oninput="updateUrl('grass')">
+            </div>
+            <button onclick="getGrass()">요청 보내기</button>
+          </div>
+          <label>응답 <span id="status-grass" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-grass">응답이 여기 표시됩니다...</div>
+          <div id="grass-visual" style="margin-top:12px; display:none;">
+            <p style="font-size:12px; color:#7d8590; margin-bottom:6px;">잔디 시각화</p>
+            <div class="grass-grid" id="grass-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /commits/activity -->
+    <div id="sec-activity" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method get">GET</span>
+          <span class="card-title">/commits/activity — 최근 7일 활동</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display" id="url-activity">GET http://localhost:8080/commits/activity?userId=1</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="number" id="activity-uid" placeholder="1" value="1" oninput="updateUrl('activity')">
+            </div>
+            <button onclick="getActivity()">요청 보내기</button>
+          </div>
+          <label>응답 <span id="status-activity" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-activity">응답이 여기 표시됩니다...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /commits/level -->
+    <div id="sec-level" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method get">GET</span>
+          <span class="card-title">/commits/level — 난이도별 커밋 수</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display" id="url-level">GET http://localhost:8080/commits/level?userId=1</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="number" id="level-uid" placeholder="1" value="1" oninput="updateUrl('level')">
+            </div>
+            <button onclick="getLevelDist()">요청 보내기</button>
+          </div>
+          <label>응답 <span id="status-level" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-level">응답이 여기 표시됩니다...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /rank -->
+    <div id="sec-top30" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method get">GET</span>
+          <span class="card-title">/rank — TOP 30 랭킹</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display">GET http://localhost:8080/rank</div>
+          <div class="form-row">
+            <button onclick="getTop30()">요청 보내기</button>
+          </div>
+          <label>응답 <span id="status-top30" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-top30">응답이 여기 표시됩니다...</div>
+          <div id="rank-table-wrap" style="margin-top:12px; display:none;">
+            <table class="rank-table">
+              <thead><tr><th>#</th><th>Rank</th><th>User ID</th><th>Commits</th></tr></thead>
+              <tbody id="rank-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /rank/users -->
+    <div id="sec-userRank" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method get">GET</span>
+          <span class="card-title">/rank/users — 내 랭킹 조회</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display" id="url-userRank">GET http://localhost:8080/rank/users?userId=1</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="number" id="userRank-uid" placeholder="1" value="1" oninput="updateUrl('userRank')">
+            </div>
+            <button onclick="getUserRank()">요청 보내기</button>
+          </div>
+          <label>응답 <span id="status-userRank" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-userRank">응답이 여기 표시됩니다...</div>
+          <p style="margin-top:8px; font-size:12px; color:#7d8590;">
+            💡 Redis HGET O(1) → Cache Miss 시 ZREVRANK O(log N) Graceful Degradation
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- POST /group -->
+    <div id="sec-createGroup" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method post">POST</span>
+          <span class="card-title">/group — 그룹 생성</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display">POST http://localhost:8080/group</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID (방장)</label>
+              <input type="number" id="cg-uid" placeholder="1" value="1">
+            </div>
+            <div class="form-group">
+              <label>그룹명</label>
+              <input type="text" id="cg-name" placeholder="알고리즘스터디">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>비밀번호 (선택)</label>
+              <input type="text" id="cg-pw" placeholder="비워두면 공개 그룹">
+            </div>
+            <div class="form-group">
+              <label>최대 인원</label>
+              <input type="number" id="cg-max" placeholder="5" value="5">
+            </div>
+            <button onclick="createGroup()">그룹 생성</button>
+          </div>
+          <label>응답 <span id="status-createGroup" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-createGroup">응답이 여기 표시됩니다...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POST /group/member -->
+    <div id="sec-joinGroup" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method post">POST</span>
+          <span class="card-title">/group/member — 그룹 참가</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display">POST http://localhost:8080/group/member</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="number" id="jg-uid" placeholder="1" value="1">
+            </div>
+            <div class="form-group">
+              <label>Group ID</label>
+              <input type="number" id="jg-gid" placeholder="1" value="1">
+            </div>
+            <div class="form-group">
+              <label>비밀번호 (선택)</label>
+              <input type="text" id="jg-pw" placeholder="없으면 비워두세요">
+            </div>
+            <button onclick="joinGroup()">참가</button>
+          </div>
+          <label>응답 <span id="status-joinGroup" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-joinGroup">응답이 여기 표시됩니다...</div>
+          <p style="margin-top:8px; font-size:12px; color:#7d8590;">
+            💡 atomic UPDATE WHERE counter &lt; max — 동시 참가 시 초과 방지
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /group/info -->
+    <div id="sec-groupInfo" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method get">GET</span>
+          <span class="card-title">/group/info — 내 그룹 정보</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display" id="url-groupInfo">GET http://localhost:8080/group/info?userId=1</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="number" id="gi-uid" placeholder="1" value="1" oninput="updateUrl('groupInfo')">
+            </div>
+            <button onclick="getGroupInfo()">요청 보내기</button>
+          </div>
+          <label>응답 <span id="status-groupInfo" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-groupInfo">응답이 여기 표시됩니다...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /group/search -->
+    <div id="sec-searchGroup" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method get">GET</span>
+          <span class="card-title">/group/search — 그룹 검색</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display" id="url-searchGroup">GET http://localhost:8080/group/search?groupName=알고리즘</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>그룹명 검색어</label>
+              <input type="text" id="sg-name" placeholder="알고리즘" value="알고리즘" oninput="updateUrl('searchGroup')">
+            </div>
+            <button onclick="searchGroup()">검색</button>
+          </div>
+          <label>응답 <span id="status-searchGroup" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-searchGroup">응답이 여기 표시됩니다...</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function baseUrl() {
+    return document.getElementById('base-url').value.replace(/\/$/, '');
+  }
+
+  function showSection(name) {
+    document.querySelectorAll('.section').forEach(el => el.classList.add('section-hidden'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.getElementById('sec-' + name).classList.remove('section-hidden');
+    document.querySelector(`[data-sec="${name}"]`)?.classList.add('active');
+    updateUrl(name);
+  }
+
+  function updateUrl(section) {
+    const b = baseUrl();
+    const urls = {
+      login: () => `POST ${b}/users`,
+      getUser: () => `GET ${b}/users?userId=${val('getUser-id') || 1}`,
+      updateUser: () => `PATCH ${b}/users/update`,
+      checkNick: () => `GET ${b}/users/nick_name?nickName=${val('checkNick-val') || '레이라'}`,
+      fetchCommits: () => `POST ${b}/commits`,
+      grass: () => `GET ${b}/commits/grass?userId=${val('grass-uid') || 1}`,
+      activity: () => `GET ${b}/commits/activity?userId=${val('activity-uid') || 1}`,
+      level: () => `GET ${b}/commits/level?userId=${val('level-uid') || 1}`,
+      top30: () => `GET ${b}/rank`,
+      userRank: () => `GET ${b}/rank/users?userId=${val('userRank-uid') || 1}`,
+      createGroup: () => `POST ${b}/group`,
+      joinGroup: () => `POST ${b}/group/member`,
+      groupInfo: () => `GET ${b}/group/info?userId=${val('gi-uid') || 1}`,
+      searchGroup: () => `GET ${b}/group/search?groupName=${val('sg-name') || '알고리즘'}`,
+    };
+    const el = document.getElementById('url-' + section);
+    if (el && urls[section]) el.textContent = urls[section]();
+  }
+
+  function val(id) { return document.getElementById(id)?.value; }
+
+  function setResult(key, status, data) {
+    const badge = document.getElementById('status-' + key);
+    const box = document.getElementById('res-' + key);
+    if (badge) {
+      badge.textContent = status;
+      badge.className = 'status-badge ' + (status >= 200 && status < 300 ? 'status-ok' : 'status-err');
+    }
+    if (box) box.textContent = JSON.stringify(data, null, 2);
+  }
+
+  async function req(method, path, body) {
+    const url = baseUrl() + path;
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    let data;
+    try { data = await res.json(); } catch { data = { _raw: await res.text() }; }
+    return { status: res.status, data };
+  }
+
+  async function pingServer() {
+    const dot = document.getElementById('status-dot');
+    const label = document.getElementById('server-status');
+    try {
+      const r = await fetch(baseUrl() + '/rank');
+      if (r.ok || r.status === 200) {
+        dot.className = 'dot';
+        label.innerHTML = '<span class="dot"></span>&nbsp;연결됨';
+      } else throw new Error();
+    } catch {
+      dot.className = 'dot offline';
+      label.innerHTML = '<span class="dot offline"></span>&nbsp;연결 실패';
+    }
+  }
+
+  async function loginOrCreate() {
+    const { status, data } = await req('POST', '/users', {
+      githubId: val('login-github'), nickname: val('login-nick'), repositoryName: val('login-repo')
+    });
+    setResult('login', status, data);
+  }
+
+  async function getUser() {
+    const { status, data } = await req('GET', `/users?userId=${val('getUser-id')}`);
+    setResult('getUser', status, data);
+  }
+
+  async function updateUser() {
+    const body = { userId: parseInt(val('upd-id')) };
+    if (val('upd-nick')) body.nickname = val('upd-nick');
+    if (val('upd-repo')) body.repositoryName = val('upd-repo');
+    const { status, data } = await req('PATCH', '/users/update', body);
+    setResult('updateUser', status, data);
+  }
+
+  async function checkNick() {
+    const { status, data } = await req('GET', `/users/nick_name?nickName=${val('checkNick-val')}`);
+    setResult('checkNick', status, data);
+  }
+
+  async function fetchCommits() {
+    const { status, data } = await req('POST', '/commits', { userId: parseInt(val('fetch-uid')) });
+    setResult('fetchCommits', status, data);
+  }
+
+  async function getGrass() {
+    const { status, data } = await req('GET', `/commits/grass?userId=${val('grass-uid')}`);
+    setResult('grass', status, data);
+    if (status === 200 && data) renderGrass(data);
+  }
+
+  function renderGrass(data) {
+    const grid = document.getElementById('grass-grid');
+    const wrap = document.getElementById('grass-visual');
+    grid.innerHTML = '';
+    const entries = Object.entries(data).sort(([a], [b]) => a.localeCompare(b));
+    entries.forEach(([date, count]) => {
+      const cell = document.createElement('div');
+      cell.className = `grass-cell level-${Math.min(count, 4)}`;
+      cell.title = `${date}: ${count}건`;
+      grid.appendChild(cell);
+    });
+    wrap.style.display = entries.length ? 'block' : 'none';
+  }
+
+  async function getActivity() {
+    const { status, data } = await req('GET', `/commits/activity?userId=${val('activity-uid')}`);
+    setResult('activity', status, data);
+  }
+
+  async function getLevelDist() {
+    const { status, data } = await req('GET', `/commits/level?userId=${val('level-uid')}`);
+    setResult('level', status, data);
+  }
+
+  async function getTop30() {
+    const { status, data } = await req('GET', '/rank');
+    setResult('top30', status, data);
+    if (status === 200 && Array.isArray(data)) renderRankTable(data);
+  }
+
+  function renderRankTable(list) {
+    const tbody = document.getElementById('rank-tbody');
+    const wrap = document.getElementById('rank-table-wrap');
+    tbody.innerHTML = list.slice(0, 30).map((r, i) =>
+      `<tr><td>${i + 1}</td><td>${r.rank}</td><td>${r.userId}</td><td>${r.commitCount}</td></tr>`
+    ).join('');
+    wrap.style.display = list.length ? 'block' : 'none';
+  }
+
+  async function getUserRank() {
+    const { status, data } = await req('GET', `/rank/users?userId=${val('userRank-uid')}`);
+    setResult('userRank', status, data);
+  }
+
+  async function createGroup() {
+    const body = {
+      userId: parseInt(val('cg-uid')),
+      groupName: val('cg-name'),
+      password: val('cg-pw') || null,
+      maxCount: parseInt(val('cg-max') || 5)
+    };
+    const { status, data } = await req('POST', '/group', body);
+    setResult('createGroup', status, data);
+  }
+
+  async function joinGroup() {
+    const body = {
+      userId: parseInt(val('jg-uid')),
+      groupId: parseInt(val('jg-gid')),
+      password: val('jg-pw') || null
+    };
+    const { status, data } = await req('POST', '/group/member', body);
+    setResult('joinGroup', status, data);
+  }
+
+  async function getGroupInfo() {
+    const { status, data } = await req('GET', `/group/info?userId=${val('gi-uid')}`);
+    setResult('groupInfo', status, data);
+  }
+
+  async function searchGroup() {
+    const { status, data } = await req('GET', `/group/search?groupName=${val('sg-name')}`);
+    setResult('searchGroup', status, data);
+  }
+
+  // 초기 서버 연결 확인
+  pingServer();
+</script>
+</body>
+</html>
