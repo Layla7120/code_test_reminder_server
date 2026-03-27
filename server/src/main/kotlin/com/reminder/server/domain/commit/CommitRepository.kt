@@ -30,14 +30,14 @@ interface CommitRepository : JpaRepository<Commit, Long> {
             DENSE_RANK() OVER (
                 ORDER BY SUM(CASE WHEN c.commit_date >= :thisMonthStart AND c.commit_date < :nextMonthStart
                               THEN 1 ELSE 0 END) DESC
-            ) AS rank
+            ) AS `rank`
         FROM users u
         LEFT JOIN commits c
             ON u.user_id = c.user_id
             AND c.commit_date >= :prevMonthStart
         WHERE u.active = true
         GROUP BY u.user_id, u.github_id, u.nickname
-        ORDER BY rank
+        ORDER BY `rank`
         LIMIT 30
     """, nativeQuery = true)
     fun findTop30Rank(
@@ -47,7 +47,7 @@ interface CommitRepository : JpaRepository<Commit, Long> {
     ): List<RankProjection>
 
     @Query("""
-        SELECT rank_table.rank              AS rank,
+        SELECT rank_table.`rank`            AS `rank`,
                rank_table.currentMonthCount AS currentMonthCount
         FROM (
             SELECT
@@ -57,7 +57,7 @@ interface CommitRepository : JpaRepository<Commit, Long> {
                 DENSE_RANK() OVER (
                     ORDER BY SUM(CASE WHEN c.commit_date >= :thisMonthStart AND c.commit_date < :nextMonthStart
                                   THEN 1 ELSE 0 END) DESC
-                ) AS rank
+                ) AS `rank`
             FROM users u
             LEFT JOIN commits c
                 ON u.user_id = c.user_id
@@ -86,14 +86,14 @@ interface CommitRepository : JpaRepository<Commit, Long> {
             DENSE_RANK() OVER (
                 ORDER BY SUM(CASE WHEN c.commit_date >= :thisMonthStart AND c.commit_date < :nextMonthStart
                               THEN 1 ELSE 0 END) DESC
-            ) AS rank
+            ) AS `rank`
         FROM users u
         LEFT JOIN commits c
             ON u.user_id = c.user_id
             AND c.commit_date >= :prevMonthStart
         WHERE u.user_id IN (:memberIds)
         GROUP BY u.user_id, u.nickname
-        ORDER BY rank
+        ORDER BY `rank`
     """, nativeQuery = true)
     fun findMemberCommits(
         @Param("memberIds") memberIds: List<Long>,
