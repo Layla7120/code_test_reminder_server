@@ -11,7 +11,7 @@ class UserService(private val userRepository: UserRepository) {
     @Transactional
     fun loginOrCreate(githubId: String, nickname: String, repositoryName: String): User =
         userRepository.findByGithubId(githubId)
-            ?: userRepository.save(User(githubId, nickname, repositoryName))
+            ?: userRepository.save(User(githubId.trim(), nickname.trim(), repositoryName.trim()))
 
     @Transactional(readOnly = true)
     fun getUser(userId: Long): User =
@@ -21,8 +21,8 @@ class UserService(private val userRepository: UserRepository) {
     fun updateUser(userId: Long, nickname: String?, repositoryName: String?) {
         val user = getUser(userId)
         user.updateProfile(
-            nickname ?: user.nickname,
-            repositoryName ?: user.repositoryName,
+            nickname?.trim() ?: user.nickname,
+            repositoryName?.trim() ?: user.repositoryName,
         )
         // 변경 감지(Dirty Checking) → 별도 save() 불필요
     }
