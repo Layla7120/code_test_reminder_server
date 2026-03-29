@@ -306,13 +306,29 @@ export function handleSummary(data) {
   }
 
   if (SCENARIO === "tuned" || SCENARIO === "exhaustion") {
-    const baseline = SCENARIO === "tuned" ? { p95: 86, err: "<1%" } : { p95: 2000, err: ">30%" };
-    lines.push(``);
-    lines.push(`  ── Flask 레거시 비교 ──`);
-    lines.push(`  Flask p95    : ${baseline.p95} ms`);
-    lines.push(`  Spring p95   : ${p95.toFixed(0)} ms  → ${p95 < baseline.p95 ? "✓ 개선" : "✗ 미개선"}`);
-    lines.push(`  Flask 실패율 : ${baseline.err}`);
-    lines.push(`  Spring 실패율: ${(failed * 100).toFixed(2)}%`);
+    // Baseline은 외부 주입 필수 — 하드코딩 금지
+    // 실행 예시:
+    //   k6 run -e SCENARIO=exhaustion -e BASELINE_P95=4234 -e BASELINE_ERR_RATE=0 k6_spring.js
+    //   k6 run -e SCENARIO=tuned      -e BASELINE_P95=86   -e BASELINE_ERR_RATE=1 k6_spring.js
+    const baselineP95Raw = __ENV.BASELINE_P95;
+    const baselineErrRaw = __ENV.BASELINE_ERR_RATE;
+
+    if (!baselineP95Raw || !baselineErrRaw) {
+      lines.push(``);
+      lines.push(`  ── Flask 레거시 비교 ──`);
+      lines.push(`  [SKIP] BASELINE_P95, BASELINE_ERR_RATE 환경변수 누락`);
+      lines.push(`  비교를 출력하려면:`);
+      lines.push(`    k6 run -e SCENARIO=${SCENARIO} -e BASELINE_P95=<측정값> -e BASELINE_ERR_RATE=<실패율%> ...`);
+    } else {
+      const baselineP95 = parseFloat(baselineP95Raw);
+      const baselineErr = parseFloat(baselineErrRaw);
+      lines.push(``);
+      lines.push(`  ── Flask 레거시 비교 ──`);
+      lines.push(`  Flask p95    : ${baselineP95} ms`);
+      lines.push(`  Spring p95   : ${p95.toFixed(0)} ms  → ${p95 < baselineP95 ? "✓ 개선" : "✗ 미개선"}`);
+      lines.push(`  Flask 실패율 : ${baselineErr.toFixed(2)} %`);
+      lines.push(`  Spring 실패율: ${(failed * 100).toFixed(2)} %`);
+    }
   }
 
   lines.push(`========================================`);

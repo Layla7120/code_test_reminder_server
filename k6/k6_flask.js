@@ -78,14 +78,20 @@ const scenarios = {
   /**
    * [mixed] Spring Boot mixed 시나리오와 대비용
    *
-   * Flask에는 Redis 캐시 계층이 없어 GET /rank가 항상 DB DENSE_RANK()를 실행함.
-   * Spring Boot mixed는 Write+Read 동시 부하(VU 50, 1분)에서 p95 24ms를 기록했으나
-   * Flask는 캐시 없는 pure Read 부하만으로 어떤 p95를 보이는지 측정.
+   * Flask는 GET /rank에 SimpleCache(프로세스 로컬 메모리, 60s TTL)를 사용함.
+   * 단, GET /rank/users는 캐시 없음 → 매 요청마다 DENSE_RANK() 풀 스캔.
+   *
+   * VU 50 중 30%(~15 VU)가 uncached GET /rank/users를 지속적으로 히트 →
+   * pool_size=5 + max_overflow=10 (최대 15 커넥션) 고갈 → 29.51% 실패.
+   *
+   * Spring Boot와의 차이:
+   *   - Flask SimpleCache: 프로세스 로컬, GET /rank(top30)만 캐시
+   *   - Spring Boot Redis: 공유 캐시, rank 전체 경로 커버 + Write-through 갱신
    *
    * 비교 논점:
-   *   "Spring Boot는 Write가 Redis를 갱신하는 동안에도 Read 경로(Redis HGET)가
-   *    완전히 분리되어 있어 p95 24ms를 유지했다.
-   *    Flask는 Write 없는 동일 조건(VU 50)의 Read에서 p95가 얼마인가?"
+   *   "Spring Boot는 Write+Read 동시 부하(p95 24ms, 실패율 0.42%)에서도
+   *    Redis 공유 캐시 덕분에 Read 경로가 DB와 완전히 분리됐다.
+   *    Flask는 일부 캐시가 있어도 uncached 엔드포인트 30%만으로 커넥션 풀이 고갈된다."
    */
   mixed: {
     executor: "constant-vus",

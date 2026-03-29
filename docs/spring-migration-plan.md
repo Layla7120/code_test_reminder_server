@@ -323,6 +323,113 @@ Read
 
 ---
 
+## 부하 테스트 결과 비교 (Flask vs Spring Boot)
+
+### 테스트 환경
+
+| 항목 | 값 |
+|------|--|
+| 도구 | k6 |
+| VU | 50 (일정) |
+| 지속 시간 | 60초 |
+| 엔드포인트 구성 | GET /rank 70% + GET /rank/users 30% + POST /commits 혼합 |
+| DB 커넥션 풀 | Flask: pool_size=5, max_overflow=10 (최대 15) / Spring: HikariCP maximum-pool-size=20 |
+| 캐싱 | Flask: SimpleCache(프로세스 로컬, 60s TTL, GET /rank만 커버) / Spring: Redis(공유, rank 전 경로 커버) |
+
+---
+
+### mixed 시나리오 — Flask 결과
+
+```
+시나리오: constant-vus, VU=50, duration=60s
+총 요청:   14,677건  (243.8 req/s)
+
+http_req_failed : 29.51%  ← 4,331건 실패
+checks 통과율  : 82.69%
+
+p95 (성공 요청만): 8.61 ms
+p95 (전체):       8.18 ms
+rank_latency p95: 9 ms
+```
+
+**실패 원인 분석**
+
+```
+GET /rank/users → 캐시 없음 → 매 요청마다 DENSE_RANK() 풀 스캔
+VU 50 중 30%(≈15 VU)가 지속적으로 GET /rank/users 히트
+  → DB 커넥션 고갈 (pool_size=5 + max_overflow=10 = 최대 15)
+  → 나머지 요청들까지 연쇄 503/5xx
+```
+
+**핵심:** Flask SimpleCache는 GET /rank(top30)만 보호한다. GET /rank/users는 항상 DB에 직접 닿으며, VU 15개만으로 커넥션 풀 상한선을 채워버린다.
+
+---
+
+### mixed 시나리오 — Spring Boot 결과
+
+```
+시나리오: constant-vus, VU=50, duration=60s
+총 요청:   5,081건  (101.1 req/s)
+
+http_req_failed : 0%  ← 실패 없음
+checks 통과율  : 100%
+
+p95:                  5.805 ms
+rank_latency p95:     5 ms
+user_rank_latency p95: 7 ms
+```
+
+> **처리량 차이(14,677 vs 5,081)** — Spring 시나리오는 POST /commits에 GitHub API 호출 지연이 포함된 더 현실적인 write-heavy 혼합으로, 순수 처리량 수치는 직접 비교 대상이 아님. 핵심 지표는 실패율과 p95.
+
+---
+
+### Flask vs Spring Boot 비교 요약
+
+| 지표 | Flask mixed | Spring Boot mixed |
+|------|------------|------------------|
+| 실패율 | **29.51%** | **0%** |
+| p95 (성공 요청) | 8.61 ms | 5.805 ms |
+| rank_latency p95 | 9 ms | 5 ms |
+| 캐시 커버리지 | GET /rank만 (로컬) | rank 전 경로 (Redis 공유) |
+| 커넥션 풀 고갈 | VU 15개로 한계 도달 | 고갈 없음 |
+
+---
+
+### 개선 결정 사항 (이번 변경)
+
+#### 1. HikariCP connection-timeout: 30,000ms → 3,000ms
+
+```yaml
+# 변경 전
+connection-timeout: 30000
+
+# 변경 후
+connection-timeout: 3000  # Fail-fast: 3초 초과 시 즉시 5xx 반환
+```
+
+**이유:** 커넥션 대기 30초는 대기열이 쌓이면서 연쇄 지연을 유발한다. 3초로 줄이면 병목 지점에서 즉시 에러를 반환하여 상위 레이어(서킷 브레이커, 재시도 로직)가 빠르게 판단할 수 있다.
+
+#### 2. k6_spring.js baseline 비교: 하드코딩 → 환경변수 주입
+
+```bash
+# 이전: tuned/exhaustion 시나리오 실행 시 Flask p95=86ms 하드코딩
+# 이후: 실행 시 직접 주입
+k6 run -e SCENARIO=tuned \
+        -e BASELINE_P95=86 \
+        -e BASELINE_ERR_RATE=1 \
+        k6/k6_spring.js
+```
+
+**이유:** 향후 Flask 재측정 시 하드코딩된 값이 달라지면 비교가 무효화된다. 환경변수로 분리해 측정값과 스크립트를 독립적으로 유지.
+
+#### 3. k6_flask.js mixed 시나리오 주석 정정
+
+Flask의 캐싱 구조를 잘못 설명한 주석 수정:
+- **변경 전:** "Flask에는 Redis 캐시 계층이 없어 GET /rank가 항상 DB DENSE_RANK()를 실행함"
+- **변경 후:** "Flask는 GET /rank에 SimpleCache(60s TTL)를 사용하나 GET /rank/users는 캐시 없음 → uncached 30% VU만으로 커넥션 풀 고갈"
+
+---
+
 ## 면접 예상 질문 & 답변
 
 | 질문 | 핵심 답변 |
@@ -334,3 +441,5 @@ Read
 | Cache Miss 때 왜 O(N) 대신 ZREVRANK? | 시스템 가용성 > 순간적 정확성. 배치 후 자동 복구되는 Eventual Consistency 수용 |
 | 배치와 실시간 간 Lost Update 방어? | Lua ZADD GT: Redis 현재값 > DB값이면 덮어쓰지 않음 |
 | RENAME이 왜 안전한가? | Redis 단일 스레드 기반 원자 연산 O(1). delete + 재삽입 간극 없음 |
+| Flask 실패율 29%의 원인은? | SimpleCache가 GET /rank만 커버 → GET /rank/users 30% VU가 상시 DB 직접 히트 → 커넥션 풀(최대 15) 고갈 → 연쇄 실패 |
+| connection-timeout을 줄인 이유? | Fail-fast: 30초 대기는 대기열 붕괴를 유발. 3초에서 즉시 5xx 반환해 상위 레이어가 빠르게 판단 가능 |

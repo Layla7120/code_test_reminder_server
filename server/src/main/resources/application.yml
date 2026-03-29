@@ -10,7 +10,7 @@ spring:
     hikari:
       maximum-pool-size: 20       # Flask tuned 시나리오와 동일 조건 (k6 비교용)
       minimum-idle: 5
-      connection-timeout: 30000
+      connection-timeout: 3000        # Fail-fast: 3초 초과 시 즉시 5xx 반환 (대기열 붕괴 방지)
       idle-timeout: 600000
       max-lifetime: 1800000       # Flask pool_recycle=1800s 와 동일
 
