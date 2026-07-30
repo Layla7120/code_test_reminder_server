@@ -1,0 +1,35 @@
+# 테스트 전용 설정
+#
+# datasource url/username/password 와 redis host/port 는 여기 없다.
+# @ServiceConnection 이 Testcontainers 가 띄운 컨테이너에서 직접 주입한다.
+# (하드코딩하면 컨테이너 랜덤 포트와 어긋난다)
+
+spring:
+  jpa:
+    hibernate:
+      # 운영과 동일하게 validate 유지.
+      # create-drop 을 쓰면 Hibernate 가 만든 스키마를 검증하게 되어
+      # 정작 확인하려는 infra/init.sql 이 테스트 대상에서 빠진다.
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  datasource:
+    # 운영 yml 의 ${DB_USER}/${DB_PASSWORD} 는 기본값이 없어 그대로 두면 바인딩이 실패한다.
+    # 실제 접속 정보는 @ServiceConnection 이 덮어쓰므로 이 값은 쓰이지 않는다.
+    username: test
+    password: test
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 3000
+
+# 실제 GitHub 을 부르지 않는다. GithubClient 빈 생성용 더미 값
+github:
+  token: test-token
+
+logging:
+  level:
+    org.testcontainers: INFO
+    com.github.dockerjava: WARN
