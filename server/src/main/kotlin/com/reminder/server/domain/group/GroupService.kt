@@ -67,21 +67,23 @@ class GroupService(
         groupRepository.decrementMemberCounter(groupId)
     }
 
+    // 유저는 여러 그룹에 동시에 속할 수 있다(요구사항). participations.first()로
+    // 하나만 반환하면 두 번째부터는 조용히 버려진다 — 스키마가 아니라 이 조회가 버그였다.
     @Transactional(readOnly = true)
-    fun getGroupInfo(userId: Long): GroupInfoResult {
+    fun getGroupInfo(userId: Long): List<GroupInfoResult> {
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException(userId) }
         val participations = participateRepository.findByUser(user)
-        if (participations.isEmpty()) return GroupInfoResult(null, emptyList())
-
-        val group = participations.first().group
-        val memberIds = participateRepository.findMemberIdsByGroupId(group.id)
 
         val (thisMonthStart, nextMonthStart, prevMonthStart) = dateRanges()
-        val memberCommits = commitRepository.findMemberCommits(
-            memberIds, thisMonthStart, nextMonthStart, prevMonthStart
-        )
 
-        return GroupInfoResult(group, memberCommits)
+        return participations.map { participation ->
+            val group = participation.group
+            val memberIds = participateRepository.findMemberIdsByGroupId(group.id)
+            val memberCommits = commitRepository.findMemberCommits(
+                memberIds, thisMonthStart, nextMonthStart, prevMonthStart
+            )
+            GroupInfoResult(group, memberCommits)
+        }
     }
 
     @Transactional
@@ -107,6 +109,6 @@ class GroupService(
 }
 
 data class GroupInfoResult(
-    val group: Group?,
+    val group: Group,
     val memberCommits: List<MemberCommitProjection>,
 )
