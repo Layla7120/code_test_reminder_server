@@ -22,8 +22,10 @@ spring:
     username: test
     password: test
     hikari:
-      maximum-pool-size: 10
-      connection-timeout: 3000
+      # 동시성 테스트가 수십 개 스레드를 동시에 띄운다.
+      # 커넥션 풀 고갈은 여기서 검증할 대상이 아니므로 넉넉히 잡는다.
+      maximum-pool-size: 30
+      connection-timeout: 10000
 
 # 실제 GitHub 을 부르지 않는다. GithubClient 빈 생성용 더미 값
 github:
