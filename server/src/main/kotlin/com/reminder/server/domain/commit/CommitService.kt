@@ -37,38 +37,41 @@ class CommitService(
             .setIfAbsent(lockKey, "1", Duration.ofSeconds(30))
         if (acquired != true) throw CommitFetchAlreadyInProgressException()
 
-        try {
-            val rawCommits = githubClient.fetchCommits(user.githubId, user.repositoryName)
-            val dtos = rawCommits.map { it.copy(userId = userId) }
+        // 락 해제는 이 트랜잭션이 실제로 끝난 뒤(커밋이든 롤백이든)로 미룬다.
+        // try/finally로 여기서 바로 지우면 DB 커밋 "전에" 락이 풀려, 그 틈에 들어온
+        // 두 번째 요청이 아직 커밋 안 된 신규 커밋을 findExistingShas()에서 "없음"으로 보고
+        // GitHub을 중복 호출하고 랭킹도 중복 계상할 수 있다 (버그 A가 이 경로로 재발한다).
+        // 예외가 나도 이 이벤트는 이미 발행됐으므로 AFTER_COMPLETION에서 반드시 해제된다.
+        eventPublisher.publishEvent(CommitFetchLockReleaseEvent(lockKey))
 
-            // 실제로 새로 저장될 커밋만 랭킹에 반영한다.
-            // ON DUPLICATE KEY UPDATE는 이미 있는 sha를 조용히 건너뛰는데,
-            // dtos.size(요청 개수)를 그대로 증분으로 쓰면 같은 커밋을 재수집할 때마다
-            // 실제 삽입 없이 점수만 계속 오른다 (버그 A).
-            val existingShas = commitJdbcRepository.findExistingShas(dtos.map { it.sha })
-            val newCommits = dtos
-                .distinctBy { it.sha }  // 같은 fetch 안의 sha 중복 방어 (정상 GitHub 응답에서는 없음)
-                .filter { it.sha !in existingShas }
+        val rawCommits = githubClient.fetchCommits(user.githubId, user.repositoryName)
+        val dtos = rawCommits.map { it.copy(userId = userId) }
 
-            // sha 정렬 후 bulk upsert (InnoDB Next-Key Lock 순서 보장 → 데드락 방지)
-            commitJdbcRepository.bulkUpsert(dtos)
+        // 실제로 새로 저장될 커밋만 랭킹에 반영한다.
+        // ON DUPLICATE KEY UPDATE는 이미 있는 sha를 조용히 건너뛰는데,
+        // dtos.size(요청 개수)를 그대로 증분으로 쓰면 같은 커밋을 재수집할 때마다
+        // 실제 삽입 없이 점수만 계속 오른다 (버그 A).
+        val existingShas = commitJdbcRepository.findExistingShas(dtos.map { it.sha })
+        val newCommits = dtos
+            .distinctBy { it.sha }  // 같은 fetch 안의 sha 중복 방어 (정상 GitHub 응답에서는 없음)
+            .filter { it.sha !in existingShas }
 
-            // 월별로 나눠 발행 — 버킷은 서버의 "지금"이 아니라 커밋의 실제 날짜 기준.
-            // YearMonth.now(clock)을 쓰면 월초에 지난달 커밋을 수집할 때
-            // 이번달 ZSET에 잘못 가산되어 다음 달까지 정합성이 어긋난다.
-            //
-            // DB 트랜잭션 커밋 후 Redis ZINCRBY 발행 (AFTER_COMMIT, 롤백 시 Redis 미반영)
-            newCommits
-                .groupingBy { YearMonth.from(it.commitDate) }
-                .eachCount()
-                .forEach { (yearMonth, count) ->
-                    eventPublisher.publishEvent(CommitsSavedEvent(userId, count, yearMonth))
-                }
+        // sha 정렬 후 bulk upsert (InnoDB Next-Key Lock 순서 보장 → 데드락 방지)
+        commitJdbcRepository.bulkUpsert(dtos)
 
-            return newCommits.size
-        } finally {
-            redisTemplate.delete(lockKey)
-        }
+        // 월별로 나눠 발행 — 버킷은 서버의 "지금"이 아니라 커밋의 실제 날짜 기준.
+        // YearMonth.now(clock)을 쓰면 월초에 지난달 커밋을 수집할 때
+        // 이번달 ZSET에 잘못 가산되어 다음 달까지 정합성이 어긋난다.
+        //
+        // DB 트랜잭션 커밋 후 Redis ZINCRBY 발행 (AFTER_COMMIT, 롤백 시 Redis 미반영)
+        newCommits
+            .groupingBy { YearMonth.from(it.commitDate) }
+            .eachCount()
+            .forEach { (yearMonth, count) ->
+                eventPublisher.publishEvent(CommitsSavedEvent(userId, count, yearMonth))
+            }
+
+        return newCommits.size
     }
 
     // ── 커밋 현황 조회 ────────────────────────────────────────────────────────
