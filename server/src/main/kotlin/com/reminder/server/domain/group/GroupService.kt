@@ -58,7 +58,12 @@ class GroupService(
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException(userId) }
         val group = groupRepository.findById(groupId).orElseThrow { GroupNotFoundException(groupId) }
 
-        participateRepository.deleteByGroupAndUser(group, user)
+        // 실제로 삭제된 행이 있을 때만 카운터를 내린다.
+        // 비멤버가 호출해도 무조건 감소시키면 member_counter가 실제 인원보다 낮아져
+        // incrementMemberCounterIfNotFull()의 정원 방어가 한 자리 더 허용하게 된다.
+        val deleted = participateRepository.deleteByGroupAndUser(group, user)
+        if (deleted == 0L) throw NotGroupMemberException()
+
         groupRepository.decrementMemberCounter(groupId)
     }
 

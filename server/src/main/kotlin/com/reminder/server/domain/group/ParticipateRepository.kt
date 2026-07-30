@@ -15,5 +15,6 @@ interface ParticipateRepository : JpaRepository<Participate, Long> {
     @Query("SELECT p.user.id FROM Participate p WHERE p.group.id = :groupId")
     fun findMemberIdsByGroupId(@Param("groupId") groupId: Long): List<Long>
 
-    fun deleteByGroupAndUser(group: Group, user: User)
+    // 삭제된 행 수를 반환한다 — 비멤버의 탈퇴 요청과 실제 탈퇴를 구분하기 위함
+    fun deleteByGroupAndUser(group: Group, user: User): Long
 }
