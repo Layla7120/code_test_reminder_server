@@ -16,6 +16,20 @@ data class CommitInsertDto(
 @Repository
 class CommitJdbcRepository(private val jdbcTemplate: JdbcTemplate) {
 
+    // 삽입 전 이미 있는 sha를 조회해 실제 신규 건수를 판별한다.
+    // batchUpdate의 반환값(IntArray)은 MySQL rewriteBatchedStatements 환경에서
+    // SUCCESS_NO_INFO(-2)로 나와 삽입 건수 집계에 쓸 수 없다.
+    fun findExistingShas(shas: List<String>): Set<String> {
+        if (shas.isEmpty()) return emptySet()
+
+        val placeholders = shas.joinToString(",") { "?" }
+        return jdbcTemplate.query(
+            "SELECT sha FROM commits WHERE sha IN ($placeholders)",
+            { rs, _ -> rs.getString("sha") },
+            *shas.toTypedArray(),
+        ).toSet()
+    }
+
     // 단건 upsert 100번(네트워크 100번) → batchUpdate로 단 1번의 네트워크 I/O
     // chunkSize=100: 한 번에 100건씩 묶어서 전송
     fun bulkUpsert(commits: List<CommitInsertDto>) {

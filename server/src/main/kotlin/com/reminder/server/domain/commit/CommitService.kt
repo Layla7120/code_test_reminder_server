@@ -41,15 +41,31 @@ class CommitService(
             val rawCommits = githubClient.fetchCommits(user.githubId, user.repositoryName)
             val dtos = rawCommits.map { it.copy(userId = userId) }
 
+            // 실제로 새로 저장될 커밋만 랭킹에 반영한다.
+            // ON DUPLICATE KEY UPDATE는 이미 있는 sha를 조용히 건너뛰는데,
+            // dtos.size(요청 개수)를 그대로 증분으로 쓰면 같은 커밋을 재수집할 때마다
+            // 실제 삽입 없이 점수만 계속 오른다 (버그 A).
+            val existingShas = commitJdbcRepository.findExistingShas(dtos.map { it.sha })
+            val newCommits = dtos
+                .distinctBy { it.sha }  // 같은 fetch 안의 sha 중복 방어 (정상 GitHub 응답에서는 없음)
+                .filter { it.sha !in existingShas }
+
             // sha 정렬 후 bulk upsert (InnoDB Next-Key Lock 순서 보장 → 데드락 방지)
             commitJdbcRepository.bulkUpsert(dtos)
 
-            // DB 트랜잭션 커밋 후 Redis ZINCRBY 발행
-            // AFTER_COMMIT이므로 롤백 시 Redis 미반영
-            eventPublisher.publishEvent(
-                CommitsSavedEvent(userId, dtos.size, YearMonth.now(clock))
-            )
-            return dtos.size
+            // 월별로 나눠 발행 — 버킷은 서버의 "지금"이 아니라 커밋의 실제 날짜 기준.
+            // YearMonth.now(clock)을 쓰면 월초에 지난달 커밋을 수집할 때
+            // 이번달 ZSET에 잘못 가산되어 다음 달까지 정합성이 어긋난다.
+            //
+            // DB 트랜잭션 커밋 후 Redis ZINCRBY 발행 (AFTER_COMMIT, 롤백 시 Redis 미반영)
+            newCommits
+                .groupingBy { YearMonth.from(it.commitDate) }
+                .eachCount()
+                .forEach { (yearMonth, count) ->
+                    eventPublisher.publishEvent(CommitsSavedEvent(userId, count, yearMonth))
+                }
+
+            return newCommits.size
         } finally {
             redisTemplate.delete(lockKey)
         }
