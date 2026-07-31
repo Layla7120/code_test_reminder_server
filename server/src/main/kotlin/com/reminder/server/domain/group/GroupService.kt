@@ -24,10 +24,18 @@ class GroupService(
         val owner = userRepository.findById(userId).orElseThrow { UserNotFoundException(userId) }
         val encodedPw = password?.let { passwordEncoder.encode(it) }
         val group = groupRepository.save(Group(groupName, encodedPw, maxCount, owner))
-        // 생성자도 멤버로 참여
+
+        // 생성자도 멤버로 참여 — joinGroup과 동일한 순서: 증가 먼저, 성공 확인 후 참여 기록.
+        // maxCount=0처럼 정원이 자기 자신도 못 채우는 값이면 여기서 막힌다.
+        val updated = groupRepository.incrementMemberCounterIfNotFull(group.id)
+        if (updated == 0) throw GroupFullException()
         participateRepository.save(Participate(group, owner))
-        groupRepository.incrementMemberCounterIfNotFull(group.id)
-        return group
+
+        // incrementMemberCounterIfNotFull은 @Modifying 벌크 UPDATE라 DB는 바뀌지만
+        // Hibernate가 세터를 거치지 않아 위 group 객체의 memberCounter는 여전히 0이다.
+        // 그대로 반환하면 응답의 memberCount가 항상 0으로 나간다. clearAutomatically가
+        // 걸려있어 이 재조회는 1차 캐시가 아니라 DB에서 정확한 값을 다시 읽어온다.
+        return groupRepository.findById(group.id).orElseThrow { GroupNotFoundException(group.id) }
     }
 
     @Transactional

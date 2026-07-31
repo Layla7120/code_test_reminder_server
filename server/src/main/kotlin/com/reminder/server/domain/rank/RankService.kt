@@ -3,7 +3,6 @@ package com.reminder.server.domain.rank
 import com.reminder.server.domain.commit.CommitRepository
 import org.springframework.dao.DataAccessException
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDateTime
 import java.time.YearMonth
@@ -36,15 +35,19 @@ class RankService(
     }
 
     // ── DB 폴백 (Redis 장애 또는 초기 기동 시) ────────────────────────────────
+    //
+    // private 메서드에는 @Transactional을 붙이지 않는다. Spring AOP 프록시는
+    // "외부에서 프록시를 거쳐 들어오는 호출"만 가로채는데, 여기는 같은 클래스 안의
+    // self-invocation(getTop30() → getTop30FromDb())이라 프록시를 안 거친다.
+    // 게다가 private 메서드는 애초에 오버라이드가 불가능해 프록시 대상도 될 수 없다.
+    // (JpaRepository의 각 메서드는 자체적으로 이미 트랜잭션이 걸려 있어 없어도 안전하다)
 
-    @Transactional(readOnly = true)
     private fun getTop30FromDb(): List<RankEntry> {
         val (thisMonthStart, nextMonthStart, prevMonthStart) = dateRanges()
         return commitRepository.findTop30Rank(thisMonthStart, nextMonthStart, prevMonthStart)
             .map { RankEntry(it.getUserId(), it.getCurrentMonthCount(), it.getRank()) }
     }
 
-    @Transactional(readOnly = true)
     private fun getUserRankFromDb(userId: Long): Long? {
         val (thisMonthStart, nextMonthStart, _) = dateRanges()
         return commitRepository.findUserRank(userId, thisMonthStart, nextMonthStart)?.getRank()
