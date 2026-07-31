@@ -76,6 +76,21 @@ class RankServiceFallbackTest {
         verifyNoInteractions(commitRepository)
     }
 
+    @Test
+    @DisplayName("ranking.redis.enabled=false면 Redis를 아예 건드리지 않고 DB로 간다")
+    fun skipsRedisEntirelyWhenDisabled() {
+        val dbOnly = RankService(rankingRedisRepository, commitRepository, clock, redisRankingEnabled = false)
+        `when`(commitRepository.findUserRank(1L, thisMonthStart, nextMonthStart))
+            .thenReturn(fakeUserRank(9L))
+
+        val result = dbOnly.getUserRank(1L)
+
+        assertThat(result).isEqualTo(9L)
+        // A/B 측정의 전제: off 쪽은 Redis를 "실패시키는" 게 아니라 "쳐다보지도 않는다".
+        // 이게 깨지면 두 팔의 차이가 Redis 왕복 비용까지 섞여 측정이 오염된다.
+        verifyNoInteractions(rankingRedisRepository)
+    }
+
     private fun fakeUserRank(rank: Long): UserRankProjection = object : UserRankProjection {
         override fun getRank() = rank
         override fun getCurrentMonthCount() = 10L

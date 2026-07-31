@@ -13,10 +13,13 @@ class RankingSelfHealingScheduler(
     private val rankingRedisRepository: RankingRedisRepository,
     private val clock: Clock,
 ) {
-    // 매시간 정각 실행
+    // 기본값: 매시간 정각 실행
     // @TransactionalEventListener 실패(네트워크 단절, 서버 크래시)로 유실된 score를 복구
     // 최대 1시간 내 자동 복구 보장
-    @Scheduled(cron = "0 0 * * * *")
+    //
+    // 프로퍼티로 뺀 이유: A/B 측정 시 Redis를 미리 채워야 하는데,
+    // 하드코딩된 정시 cron으로는 최대 1시간을 기다려야 한다.
+    @Scheduled(cron = "\${ranking.sync.cron:0 0 * * * *}")
     fun syncCurrentMonthRank() {
         val now = LocalDateTime.now(clock)
         val yearMonth = YearMonth.now(clock)

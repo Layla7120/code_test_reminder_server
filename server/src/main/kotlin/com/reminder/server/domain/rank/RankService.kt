@@ -1,6 +1,7 @@
 package com.reminder.server.domain.rank
 
 import com.reminder.server.domain.commit.CommitRepository
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataAccessException
 import org.springframework.stereotype.Service
 import java.time.Clock
@@ -12,8 +13,15 @@ class RankService(
     private val rankingRedisRepository: RankingRedisRepository,
     private val commitRepository: CommitRepository,
     private val clock: Clock,
+    // false면 Redis를 건너뛰고 항상 DB 경로로 랭킹을 계산한다.
+    // 별도 구현이 아니라 아래 "Redis 장애 폴백"과 똑같은 경로를 강제로 태우는 스위치다.
+    // 목적: Redis 오프로딩의 효과를 규모별로 재는 A/B 측정에서 변수 하나만 바꾸기 위함.
+    //       동시에 "Redis가 죽으면 얼마나 느려지는가"에 대한 답도 이 스위치로 잰다.
+    @Value("\${ranking.redis.enabled:true}") private val redisRankingEnabled: Boolean = true,
 ) {
     fun getTop30(): List<RankEntry> {
+        if (!redisRankingEnabled) return getTop30FromDb()
+
         return try {
             val entries = rankingRedisRepository.getTop30(YearMonth.now(clock))
             // Redis가 비어있으면 (초기 기동 등) DB에서 폴백
@@ -27,6 +35,8 @@ class RankService(
     }
 
     fun getUserRank(userId: Long): Long? {
+        if (!redisRankingEnabled) return getUserRankFromDb(userId)
+
         return try {
             rankingRedisRepository.getUserDenseRank(userId, YearMonth.now(clock))
         } catch (e: DataAccessException) {
