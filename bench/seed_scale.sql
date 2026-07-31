@@ -13,13 +13,25 @@
 --   전원 동일하면 DENSE_RANK 결과가 전부 1등이 되어 정렬 비용이 현실과 달라진다.
 --   user_id % 40 으로 결정론적 분포를 만들어 동점자도 자연스럽게 생기게 한다.
 
+-- [중요] 앱과 같은 시계를 쓴다.
+-- 앱은 Clock.system(ZoneId.of("Asia/Seoul")) 로 "이번 달"을 계산하는데,
+-- MySQL 컨테이너는 UTC라 KST 기준 매월 1일 0~9시 구간에서 달이 어긋난다.
+-- 이 줄이 없으면 그 시간대에 시드한 커밋이 전부 "지난달" 로 분류되어
+-- 랭킹이 전부 0건으로 나오고, 측정이 조용히 무의미해진다.
+SET time_zone = '+09:00';
+
 SET SESSION cte_max_recursion_depth = 1000000;
 
--- 이전 회차 데이터 제거 (FK 순서 주의)
-DELETE FROM participate;
-DELETE FROM commits;
-DELETE FROM `groups`;
-DELETE FROM users;
+-- 이전 회차 데이터 제거.
+-- DELETE 대신 TRUNCATE 를 쓴다 — 200만 행 규모에서 DELETE 는 행 단위로 undo 로그를 쌓아
+-- 10분을 넘기고, 뒤이은 INSERT 까지 purge 경합으로 느려진다. TRUNCATE 는 테이블을 새로 만든다.
+-- FK 가 걸려 있어 TRUNCATE 가 거부되므로 잠시 검사를 끈다 (벤치마크 전용 DB 기준).
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE participate;
+TRUNCATE TABLE commits;
+TRUNCATE TABLE `groups`;
+TRUNCATE TABLE users;
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- 유저 @target_users 명
 -- active = TRUE 여야 랭킹 쿼리(WHERE u.active = true)에 잡힌다.
