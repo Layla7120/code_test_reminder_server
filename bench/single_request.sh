@@ -20,10 +20,11 @@ export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/
 export PATH="$JAVA_HOME/bin:$PATH"
 export DB_USER=reminder DB_PASSWORD=reminder DB_NAME=reminder GITHUB_TOKEN=unused
 
+source bench/lib.sh   # assert_data_is_measurable / teardown_data / RANK_KEY
+
 MYSQL=(docker exec -i reminder-mysql mysql -ureminder -preminder reminder)
 REDIS=(docker exec -i reminder-redis redis-cli)
 JAR="server/build/libs/server-0.0.1-SNAPSHOT.jar"
-RANK_KEY="rank:commit:$(date +%Y%m)"
 FAR_CRON="0 0 0 1 1 ?"
 FAST_CRON="*/5 * * * * ?"
 OUT="bench/results/single_request.txt"
@@ -58,11 +59,14 @@ for users in 10000 50000 100000; do
   for arm in db redis; do
     [ "$arm" = "db" ] && enabled=false || enabled=true
     start_server "$enabled" "$FAR_CRON"; wait_for_server
+    assert_data_is_measurable || { stop_server; exit 1; }
     t30=$(median_ms "http://localhost:8080/rank")
     tur=$(median_ms "http://localhost:8080/rank/users?userId=7")
     stop_server
     printf "%-10s %-7s %12s %12s\n" "$users" "$arm" "$t30" "$tur" | tee -a "$OUT"
   done
 done
+
+teardown_data
 
 echo "" && echo "결과: $OUT"

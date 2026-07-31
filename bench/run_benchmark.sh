@@ -27,13 +27,14 @@ export DB_PASSWORD=reminder
 export DB_NAME=reminder
 export GITHUB_TOKEN=unused-in-benchmark
 
+source bench/lib.sh   # assert_data_is_measurable / assert_redis_warm / teardown_data / RANK_KEY
+
 RESULT_DIR="bench/results"
 mkdir -p "$RESULT_DIR"
 
 MYSQL=(docker exec -i reminder-mysql mysql -ureminder -preminder reminder)
 REDIS=(docker exec -i reminder-redis redis-cli)
 JAR="server/build/libs/server-0.0.1-SNAPSHOT.jar"
-RANK_KEY="rank:commit:$(date +%Y%m)"
 
 # 측정 중 스케줄러가 끼어들면 100k ZSET 전체를 다시 읽어 지연이 튄다.
 # 1월 1일 정각으로 밀어 사실상 실행되지 않게 한다.
@@ -88,6 +89,10 @@ run_one() {  # $1=users  $2=arm  $3=redis_enabled
   start_server "$3" "$FAR_CRON" "$RESULT_DIR/server_${tag}.log"
   wait_for_server
 
+  # 조용히 0건을 재는 것을 막는 관문.
+  # 데이터가 이번 달 밖이면 HTTP 200 에 빈 배열이 나갈 뿐 아무것도 실패하지 않는다.
+  assert_data_is_measurable || { stop_server; return 1; }
+
   k6 run -e USERS="$1" -e ARM="$2" \
       --summary-export="$RESULT_DIR/${tag}.json" \
       bench/rank_ab.js > "$RESULT_DIR/${tag}.txt" 2>&1
@@ -105,12 +110,17 @@ for users in 10000 50000 100000; do
   { echo "SET @target_users = ${users};"; cat bench/seed_scale.sql; } | "${MYSQL[@]}"
 
   warm_redis "$users"
+  assert_redis_warm "$users"
 
-  # db 팔은 Redis 를 아예 쳐다보지 않으므로(RankServiceFallbackTest 로 검증됨)
+  # db 조건은 Redis 를 아예 쳐다보지 않으므로(RankServiceFallbackTest 로 검증됨)
   # 워밍된 Redis 가 남아 있어도 결과에 영향이 없다.
   run_one "$users" "db"    "false"
   run_one "$users" "redis" "true"
 done
+
+# 데이터를 남기지 않는다. 이번 달 커밋으로 시드된 데이터는 다음 달이 되면
+# "지난달 데이터"가 되어, 다시 돌릴 때 조용히 0건 측정을 유발한다.
+teardown_data
 
 echo ""
 echo "완료. 결과: $RESULT_DIR/"
