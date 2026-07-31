@@ -2,7 +2,6 @@ package com.reminder.server.domain.rank
 
 import com.reminder.server.domain.commit.CommitRepository
 import org.springframework.dao.DataAccessException
-import org.springframework.data.redis.RedisConnectionFailureException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -20,8 +19,10 @@ class RankService(
             val entries = rankingRedisRepository.getTop30(YearMonth.now(clock))
             // Redis가 비어있으면 (초기 기동 등) DB에서 폴백
             if (entries.isNotEmpty()) entries else getTop30FromDb()
-        } catch (e: RedisConnectionFailureException) {
-            // Redis 장애 시 DB 폴백 — 성능 저하 감수, 가용성 우선
+        } catch (e: DataAccessException) {
+            // Redis 장애(연결 끊김, 타임아웃 등) 시 DB 폴백 — 성능 저하 감수, 가용성 우선
+            // RedisConnectionFailureException만 잡던 이전 버전은 QueryTimeoutException 같은
+            // 타임아웃 계열을 못 잡아 그대로 500이 나갔다. 둘 다 DataAccessException의 하위 타입.
             getTop30FromDb()
         }
     }
@@ -29,7 +30,7 @@ class RankService(
     fun getUserRank(userId: Long): Long? {
         return try {
             rankingRedisRepository.getUserDenseRank(userId, YearMonth.now(clock))
-        } catch (e: RedisConnectionFailureException) {
+        } catch (e: DataAccessException) {
             getUserRankFromDb(userId)
         }
     }
