@@ -70,7 +70,7 @@ cd server && ./gradlew bootRun
 ### 랭킹 성능 측정
 
 ```bash
-bash bench/run_benchmark.sh     # 유저 1만/5만/10만 x Redis on/off
+bash bench/run.sh     # 유저 1만/5만/10만 x Redis on/off, 약 25분
 ```
 
 → [bench/README.md](bench/README.md)
