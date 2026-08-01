@@ -7,14 +7,17 @@ GitHub 저장소의 백준 풀이 커밋을 모아 **월별 랭킹**을 매기�
 두 구현이 한 저장소에 함께 있다.
 
 ```
-app/       Flask 구현 (원본, 운영했던 것)
 server/    Kotlin + Spring Boot 구현 (현재)
+app/       Flask 구현 (원본. 대조용으로 남겨둠, 유지보수하지 않음)
 bench/     랭킹 성능 A/B 측정
 infra/     init.sql (DB 스키마)
 docs/      기록
 ```
 
 **기능은 조회·정렬·삽입·삭제가 전부다.**
+
+> `app/`의 Flask 코드는 **비교 대상으로만 남겨뒀다.** 테스트도 CI도 없다.
+> 코드 품질을 판단하려면 `server/` 를 봐야 한다.
 
 ---
 
@@ -36,13 +39,16 @@ docs/      기록
 ### 테스트 (Docker만 있으면 됨)
 
 ```bash
-export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
 cd server && ./gradlew test
 ```
 
 Testcontainers가 실제 MySQL·Redis를 자동으로 띄운다. **26개 통과.**
+push·PR마다 GitHub Actions에서도 같은 명령이 돈다 → [`.github/workflows/test.yml`](.github/workflows/test.yml)
 
-> 이 맥은 자바가 Homebrew keg-only로 설치돼 PATH에 안 잡혀서 `JAVA_HOME`이 필요하다.
+> Homebrew로 설치했다면 `openjdk@21`은 keg-only라 PATH에 안 잡힌다.
+> `/usr/libexec/java_home`이 못 찾으면
+> `/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`을 직접 지정하면 된다.
 
 ### 서버
 
@@ -54,6 +60,7 @@ cd server && ./gradlew bootRun
 ```
 
 `http://localhost:8080` — 웹 데모 페이지가 함께 뜬다.
+실행 상세와 API 명세, 트러블슈팅 → [server/README.md](server/README.md)
 
 ### 랭킹 성능 측정
 

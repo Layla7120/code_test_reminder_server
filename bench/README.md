@@ -47,9 +47,10 @@ bash bench/single_request.sh    # 동시성 1에서의 순수 쿼리 비용, 약
 
 ### 0. 준비 (두 터미널 모두)
 
+저장소 루트에서:
+
 ```bash
-cd /Users/laylaoh/Github/code_test_reminder_server
-export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export JAVA_HOME="$(/usr/libexec/java_home -v 21 2>/dev/null || echo /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home)"
 export DB_USER=reminder DB_PASSWORD=reminder DB_NAME=reminder GITHUB_TOKEN=unused
 docker compose up -d
 ```
