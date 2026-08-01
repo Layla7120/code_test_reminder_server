@@ -7,17 +7,22 @@ GitHub 저장소의 백준 풀이 커밋을 모아 **월별 랭킹**을 매기�
 두 구현이 한 저장소에 함께 있다.
 
 ```
-server/    Kotlin + Spring Boot 구현 (현재)
-app/       Flask 구현 (원본. 대조용으로 남겨둠, 유지보수하지 않음)
-bench/     랭킹 성능 A/B 측정
-infra/     init.sql (DB 스키마)
-docs/      기록
+server/       Kotlin + Spring Boot 구현 (현재)
+app/          Flask 구현 (원본. 대조용으로 남겨둠, 유지보수하지 않음)
+migrations/   Flask 시절 Alembic 마이그레이션 (2개)
+bench/        랭킹 성능 A/B 측정
+infra/        init.sql — DB 스키마
+docs/         기록
 ```
 
 **기능은 조회·정렬·삽입·삭제가 전부다.**
 
 > `app/`의 Flask 코드는 **비교 대상으로만 남겨뒀다.** 테스트도 CI도 없다.
 > 코드 품질을 판단하려면 `server/` 를 봐야 한다.
+>
+> `infra/init.sql`은 **초기 부트스트랩이지 마이그레이션 도구가 아니다.**
+> Flask에는 Alembic이 있었는데 옮기면서 대체물 없이 사라졌다 —
+> 누락이 아니라 퇴보이며, [docs/기록.md](docs/기록.md)에 적어뒀다.
 
 ---
 
