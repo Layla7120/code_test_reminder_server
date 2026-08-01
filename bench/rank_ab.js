@@ -27,7 +27,7 @@ export const options = {
     rank_ab: {
       executor: 'constant-vus',
       vus: 30,
-      duration: '60s',
+      duration: __ENV.DURATION || '60s',
       gracefulStop: '5s',
     },
   },
