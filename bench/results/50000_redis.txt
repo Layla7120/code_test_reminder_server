@@ -14,220 +14,221 @@
               * rank_ab: 30 looping VUs for 1m0s (gracefulStop: 5s)
 
 
-running (0m01.0s), 30/30 VUs, 1001 complete and 0 interrupted iterations
+running (0m01.0s), 30/30 VUs, 5209 complete and 0 interrupted iterations
 rank_ab   [   2% ] 30 VUs  0m01.0s/1m0s
 
-running (0m02.0s), 30/30 VUs, 2778 complete and 0 interrupted iterations
+running (0m02.0s), 30/30 VUs, 13355 complete and 0 interrupted iterations
 rank_ab   [   3% ] 30 VUs  0m02.0s/1m0s
 
-running (0m03.0s), 30/30 VUs, 5281 complete and 0 interrupted iterations
+running (0m03.0s), 30/30 VUs, 25778 complete and 0 interrupted iterations
 rank_ab   [   5% ] 30 VUs  0m03.0s/1m0s
 
-running (0m04.0s), 30/30 VUs, 8275 complete and 0 interrupted iterations
+running (0m04.0s), 30/30 VUs, 39714 complete and 0 interrupted iterations
 rank_ab   [   7% ] 30 VUs  0m04.0s/1m0s
+time="2026-08-01T13:52:33+09:00" level=warning msg="The test has generated metrics with 100882 unique time series, which is higher than the suggested limit of 100000 and could cause high memory usage. Consider not using high-cardinality values like unique IDs as metric tags or, if you need them in the URL, use the name metric tag or URL grouping. See https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/ for details." component=metrics-engine-ingester
 
-running (0m05.0s), 30/30 VUs, 12075 complete and 0 interrupted iterations
+running (0m05.0s), 30/30 VUs, 54601 complete and 0 interrupted iterations
 rank_ab   [   8% ] 30 VUs  0m05.0s/1m0s
 
-running (0m06.0s), 30/30 VUs, 16297 complete and 0 interrupted iterations
+running (0m06.0s), 30/30 VUs, 70080 complete and 0 interrupted iterations
 rank_ab   [  10% ] 30 VUs  0m06.0s/1m0s
 
-running (0m07.0s), 30/30 VUs, 19756 complete and 0 interrupted iterations
+running (0m07.0s), 30/30 VUs, 84918 complete and 0 interrupted iterations
 rank_ab   [  12% ] 30 VUs  0m07.0s/1m0s
+time="2026-08-01T13:52:37+09:00" level=warning msg="The test has generated metrics with 200935 unique time series, which is higher than the suggested limit of 100000 and could cause high memory usage. Consider not using high-cardinality values like unique IDs as metric tags or, if you need them in the URL, use the name metric tag or URL grouping. See https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/ for details." component=metrics-engine-ingester
 
-running (0m08.0s), 30/30 VUs, 24641 complete and 0 interrupted iterations
+running (0m08.0s), 30/30 VUs, 101601 complete and 0 interrupted iterations
 rank_ab   [  13% ] 30 VUs  0m08.0s/1m0s
 
-running (0m09.0s), 30/30 VUs, 28642 complete and 0 interrupted iterations
+running (0m09.0s), 30/30 VUs, 118991 complete and 0 interrupted iterations
 rank_ab   [  15% ] 30 VUs  0m09.0s/1m0s
 
-running (0m10.0s), 30/30 VUs, 32937 complete and 0 interrupted iterations
+running (0m10.0s), 30/30 VUs, 134039 complete and 0 interrupted iterations
 rank_ab   [  17% ] 30 VUs  0m10.0s/1m0s
 
-running (0m11.0s), 30/30 VUs, 35754 complete and 0 interrupted iterations
+running (0m11.0s), 30/30 VUs, 150967 complete and 0 interrupted iterations
 rank_ab   [  18% ] 30 VUs  0m11.0s/1m0s
 
-running (0m12.0s), 30/30 VUs, 38327 complete and 0 interrupted iterations
+running (0m12.0s), 30/30 VUs, 166993 complete and 0 interrupted iterations
 rank_ab   [  20% ] 30 VUs  0m12.0s/1m0s
 
-running (0m13.0s), 30/30 VUs, 40857 complete and 0 interrupted iterations
+running (0m13.0s), 30/30 VUs, 183075 complete and 0 interrupted iterations
 rank_ab   [  22% ] 30 VUs  0m13.0s/1m0s
-time="2026-07-31T21:22:19+09:00" level=warning msg="The test has generated metrics with 100036 unique time series, which is higher than the suggested limit of 100000 and could cause high memory usage. Consider not using high-cardinality values like unique IDs as metric tags or, if you need them in the URL, use the name metric tag or URL grouping. See https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/ for details." component=metrics-engine-ingester
 
-running (0m14.0s), 30/30 VUs, 42688 complete and 0 interrupted iterations
+running (0m14.0s), 30/30 VUs, 199331 complete and 0 interrupted iterations
 rank_ab   [  23% ] 30 VUs  0m14.0s/1m0s
 
-running (0m15.0s), 30/30 VUs, 46198 complete and 0 interrupted iterations
+running (0m15.0s), 30/30 VUs, 216379 complete and 0 interrupted iterations
 rank_ab   [  25% ] 30 VUs  0m15.0s/1m0s
 
-running (0m16.0s), 30/30 VUs, 47268 complete and 0 interrupted iterations
+running (0m16.0s), 30/30 VUs, 232854 complete and 0 interrupted iterations
 rank_ab   [  27% ] 30 VUs  0m16.0s/1m0s
 
-running (0m17.0s), 30/30 VUs, 50946 complete and 0 interrupted iterations
+running (0m17.0s), 30/30 VUs, 248260 complete and 0 interrupted iterations
 rank_ab   [  28% ] 30 VUs  0m17.0s/1m0s
 
-running (0m18.0s), 30/30 VUs, 56148 complete and 0 interrupted iterations
+running (0m18.0s), 30/30 VUs, 265637 complete and 0 interrupted iterations
 rank_ab   [  30% ] 30 VUs  0m18.0s/1m0s
 
-running (0m19.0s), 30/30 VUs, 61602 complete and 0 interrupted iterations
+running (0m19.0s), 30/30 VUs, 283188 complete and 0 interrupted iterations
 rank_ab   [  32% ] 30 VUs  0m19.0s/1m0s
 
-running (0m20.0s), 30/30 VUs, 65799 complete and 0 interrupted iterations
+running (0m20.0s), 30/30 VUs, 299394 complete and 0 interrupted iterations
 rank_ab   [  33% ] 30 VUs  0m20.0s/1m0s
 
-running (0m21.0s), 30/30 VUs, 70138 complete and 0 interrupted iterations
+running (0m21.0s), 30/30 VUs, 317155 complete and 0 interrupted iterations
 rank_ab   [  35% ] 30 VUs  0m21.0s/1m0s
 
-running (0m22.0s), 30/30 VUs, 75020 complete and 0 interrupted iterations
+running (0m22.0s), 30/30 VUs, 332714 complete and 0 interrupted iterations
 rank_ab   [  37% ] 30 VUs  0m22.0s/1m0s
 
-running (0m23.0s), 30/30 VUs, 81588 complete and 0 interrupted iterations
+running (0m23.0s), 30/30 VUs, 349408 complete and 0 interrupted iterations
 rank_ab   [  38% ] 30 VUs  0m23.0s/1m0s
+time="2026-08-01T13:52:53+09:00" level=warning msg="The test has generated metrics with 400321 unique time series, which is higher than the suggested limit of 100000 and could cause high memory usage. Consider not using high-cardinality values like unique IDs as metric tags or, if you need them in the URL, use the name metric tag or URL grouping. See https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/ for details." component=metrics-engine-ingester
 
-running (0m24.0s), 30/30 VUs, 88288 complete and 0 interrupted iterations
+running (0m24.0s), 30/30 VUs, 368204 complete and 0 interrupted iterations
 rank_ab   [  40% ] 30 VUs  0m24.0s/1m0s
 
-running (0m25.0s), 30/30 VUs, 94739 complete and 0 interrupted iterations
+running (0m25.0s), 30/30 VUs, 384028 complete and 0 interrupted iterations
 rank_ab   [  42% ] 30 VUs  0m25.0s/1m0s
-time="2026-07-31T21:22:30+09:00" level=warning msg="The test has generated metrics with 200026 unique time series, which is higher than the suggested limit of 100000 and could cause high memory usage. Consider not using high-cardinality values like unique IDs as metric tags or, if you need them in the URL, use the name metric tag or URL grouping. See https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/ for details." component=metrics-engine-ingester
 
-running (0m26.0s), 30/30 VUs, 100292 complete and 0 interrupted iterations
+running (0m26.0s), 30/30 VUs, 401450 complete and 0 interrupted iterations
 rank_ab   [  43% ] 30 VUs  0m26.0s/1m0s
 
-running (0m27.0s), 30/30 VUs, 102720 complete and 0 interrupted iterations
+running (0m27.0s), 30/30 VUs, 418610 complete and 0 interrupted iterations
 rank_ab   [  45% ] 30 VUs  0m27.0s/1m0s
 
-running (0m28.0s), 30/30 VUs, 105198 complete and 0 interrupted iterations
+running (0m28.0s), 30/30 VUs, 438801 complete and 0 interrupted iterations
 rank_ab   [  47% ] 30 VUs  0m28.0s/1m0s
 
-running (0m29.0s), 30/30 VUs, 109235 complete and 0 interrupted iterations
+running (0m29.0s), 30/30 VUs, 458665 complete and 0 interrupted iterations
 rank_ab   [  48% ] 30 VUs  0m29.0s/1m0s
 
-running (0m30.0s), 30/30 VUs, 115589 complete and 0 interrupted iterations
+running (0m30.0s), 30/30 VUs, 476529 complete and 0 interrupted iterations
 rank_ab   [  50% ] 30 VUs  0m30.0s/1m0s
 
-running (0m31.0s), 30/30 VUs, 122454 complete and 0 interrupted iterations
+running (0m31.0s), 30/30 VUs, 495147 complete and 0 interrupted iterations
 rank_ab   [  52% ] 30 VUs  0m31.0s/1m0s
 
-running (0m32.0s), 30/30 VUs, 127567 complete and 0 interrupted iterations
+running (0m32.0s), 30/30 VUs, 512076 complete and 0 interrupted iterations
 rank_ab   [  53% ] 30 VUs  0m32.0s/1m0s
 
-running (0m33.0s), 30/30 VUs, 129411 complete and 0 interrupted iterations
+running (0m33.0s), 30/30 VUs, 532650 complete and 0 interrupted iterations
 rank_ab   [  55% ] 30 VUs  0m33.0s/1m0s
 
-running (0m34.0s), 30/30 VUs, 131796 complete and 0 interrupted iterations
+running (0m34.0s), 30/30 VUs, 552718 complete and 0 interrupted iterations
 rank_ab   [  57% ] 30 VUs  0m34.0s/1m0s
 
-running (0m35.0s), 30/30 VUs, 134410 complete and 0 interrupted iterations
+running (0m35.0s), 30/30 VUs, 571997 complete and 0 interrupted iterations
 rank_ab   [  58% ] 30 VUs  0m35.0s/1m0s
 
-running (0m36.0s), 30/30 VUs, 140363 complete and 0 interrupted iterations
+running (0m36.0s), 30/30 VUs, 592461 complete and 0 interrupted iterations
 rank_ab   [  60% ] 30 VUs  0m36.0s/1m0s
 
-running (0m37.0s), 30/30 VUs, 144824 complete and 0 interrupted iterations
+running (0m37.0s), 30/30 VUs, 609776 complete and 0 interrupted iterations
 rank_ab   [  62% ] 30 VUs  0m37.0s/1m0s
 
-running (0m38.0s), 30/30 VUs, 153246 complete and 0 interrupted iterations
+running (0m38.0s), 30/30 VUs, 624204 complete and 0 interrupted iterations
 rank_ab   [  63% ] 30 VUs  0m38.0s/1m0s
 
-running (0m39.0s), 30/30 VUs, 162229 complete and 0 interrupted iterations
+running (0m39.0s), 30/30 VUs, 644465 complete and 0 interrupted iterations
 rank_ab   [  65% ] 30 VUs  0m39.0s/1m0s
 
-running (0m40.0s), 30/30 VUs, 170824 complete and 0 interrupted iterations
+running (0m40.0s), 30/30 VUs, 664697 complete and 0 interrupted iterations
 rank_ab   [  67% ] 30 VUs  0m40.0s/1m0s
 
-running (0m41.0s), 30/30 VUs, 180444 complete and 0 interrupted iterations
+running (0m41.0s), 30/30 VUs, 683136 complete and 0 interrupted iterations
 rank_ab   [  68% ] 30 VUs  0m41.0s/1m0s
 
-running (0m42.0s), 30/30 VUs, 184995 complete and 0 interrupted iterations
+running (0m42.0s), 30/30 VUs, 700712 complete and 0 interrupted iterations
 rank_ab   [  70% ] 30 VUs  0m42.0s/1m0s
 
-running (0m43.0s), 30/30 VUs, 188535 complete and 0 interrupted iterations
+running (0m43.0s), 30/30 VUs, 718336 complete and 0 interrupted iterations
 rank_ab   [  72% ] 30 VUs  0m43.0s/1m0s
 
-running (0m44.0s), 30/30 VUs, 195239 complete and 0 interrupted iterations
+running (0m44.0s), 30/30 VUs, 738627 complete and 0 interrupted iterations
 rank_ab   [  73% ] 30 VUs  0m44.0s/1m0s
 
-running (0m45.0s), 30/30 VUs, 197979 complete and 0 interrupted iterations
+running (0m45.0s), 30/30 VUs, 759027 complete and 0 interrupted iterations
 rank_ab   [  75% ] 30 VUs  0m45.0s/1m0s
 
-running (0m46.0s), 30/30 VUs, 204147 complete and 0 interrupted iterations
+running (0m46.0s), 30/30 VUs, 780537 complete and 0 interrupted iterations
 rank_ab   [  77% ] 30 VUs  0m46.0s/1m0s
 
-running (0m47.0s), 30/30 VUs, 209468 complete and 0 interrupted iterations
+running (0m47.0s), 30/30 VUs, 800235 complete and 0 interrupted iterations
 rank_ab   [  78% ] 30 VUs  0m47.0s/1m0s
 
-running (0m48.0s), 30/30 VUs, 216647 complete and 0 interrupted iterations
+running (0m48.0s), 30/30 VUs, 819862 complete and 0 interrupted iterations
 rank_ab   [  80% ] 30 VUs  0m48.0s/1m0s
 
-running (0m49.0s), 30/30 VUs, 228358 complete and 0 interrupted iterations
+running (0m49.0s), 30/30 VUs, 841076 complete and 0 interrupted iterations
 rank_ab   [  82% ] 30 VUs  0m49.0s/1m0s
 
-running (0m50.0s), 30/30 VUs, 237861 complete and 0 interrupted iterations
+running (0m50.0s), 30/30 VUs, 856359 complete and 0 interrupted iterations
 rank_ab   [  83% ] 30 VUs  0m50.0s/1m0s
 
-running (0m51.0s), 30/30 VUs, 248216 complete and 0 interrupted iterations
+running (0m51.0s), 30/30 VUs, 874521 complete and 0 interrupted iterations
 rank_ab   [  85% ] 30 VUs  0m51.0s/1m0s
 
-running (0m52.0s), 30/30 VUs, 256559 complete and 0 interrupted iterations
+running (0m52.0s), 30/30 VUs, 893704 complete and 0 interrupted iterations
 rank_ab   [  87% ] 30 VUs  0m52.0s/1m0s
 
-running (0m53.0s), 30/30 VUs, 266633 complete and 0 interrupted iterations
+running (0m53.0s), 30/30 VUs, 916320 complete and 0 interrupted iterations
 rank_ab   [  88% ] 30 VUs  0m53.0s/1m0s
 
-running (0m54.0s), 30/30 VUs, 276872 complete and 0 interrupted iterations
+running (0m54.0s), 30/30 VUs, 939292 complete and 0 interrupted iterations
 rank_ab   [  90% ] 30 VUs  0m54.0s/1m0s
 
-running (0m55.0s), 30/30 VUs, 282032 complete and 0 interrupted iterations
+running (0m55.0s), 30/30 VUs, 960570 complete and 0 interrupted iterations
 rank_ab   [  92% ] 30 VUs  0m55.0s/1m0s
 
-running (0m56.0s), 30/30 VUs, 292451 complete and 0 interrupted iterations
+running (0m56.0s), 30/30 VUs, 982241 complete and 0 interrupted iterations
 rank_ab   [  93% ] 30 VUs  0m56.0s/1m0s
 
-running (0m57.0s), 30/30 VUs, 303763 complete and 0 interrupted iterations
+running (0m57.0s), 30/30 VUs, 1004563 complete and 0 interrupted iterations
 rank_ab   [  95% ] 30 VUs  0m57.0s/1m0s
 
-running (0m58.0s), 30/30 VUs, 312421 complete and 0 interrupted iterations
+running (0m58.0s), 30/30 VUs, 1027675 complete and 0 interrupted iterations
 rank_ab   [  97% ] 30 VUs  0m58.0s/1m0s
 
-running (0m59.0s), 30/30 VUs, 323033 complete and 0 interrupted iterations
+running (0m59.0s), 30/30 VUs, 1049395 complete and 0 interrupted iterations
 rank_ab   [  98% ] 30 VUs  0m59.0s/1m0s
 
-running (1m00.0s), 30/30 VUs, 328948 complete and 0 interrupted iterations
+running (1m00.0s), 30/30 VUs, 1071645 complete and 0 interrupted iterations
 rank_ab   [ 100% ] 30 VUs  1m00.0s/1m0s
 
 
   █ TOTAL RESULTS 
 
-    checks_total.......: 329017  5480.703399/s
-    checks_succeeded...: 100.00% 329017 out of 329017
-    checks_failed......: 0.00%   0 out of 329017
+    checks_total.......: 1071754 17862.785784/s
+    checks_succeeded...: 100.00% 1071754 out of 1071754
+    checks_failed......: 0.00%   0 out of 1071754
 
     ✓ top30 200
     ✓ user_rank 200
 
     CUSTOM
-    top30_latency..................: avg=4.95ms min=385µs    med=3.27ms max=449.5ms  p(90)=8.53ms  p(95)=12.52ms
-    user_rank_latency..............: avg=5.96ms min=605µs    med=3.85ms max=441.72ms p(90)=10.55ms p(95)=15.73ms
+    top30_latency..................: avg=1.38ms min=259µs    med=1.15ms max=153.79ms p(90)=2.04ms p(95)=2.57ms
+    user_rank_latency..............: avg=2.07ms min=474µs    med=1.72ms max=135.77ms p(90)=2.94ms p(95)=3.72ms
 
     HTTP
-    http_req_duration..............: avg=5.25ms min=385µs    med=3.43ms max=449.5ms  p(90)=9.18ms  p(95)=13.49ms
-      { expected_response:true }...: avg=5.25ms min=385µs    med=3.43ms max=449.5ms  p(90)=9.18ms  p(95)=13.49ms
-    http_req_failed................: 0.00%  0 out of 329017
-    http_reqs......................: 329017 5480.703399/s
+    http_req_duration..............: avg=1.59ms min=259µs    med=1.31ms max=153.79ms p(90)=2.4ms  p(95)=3.02ms
+      { expected_response:true }...: avg=1.59ms min=259µs    med=1.31ms max=153.79ms p(90)=2.4ms  p(95)=3.02ms
+    http_req_failed................: 0.00%   0 out of 1071754
+    http_reqs......................: 1071754 17862.785784/s
 
     EXECUTION
-    iteration_duration.............: avg=5.45ms min=544.62µs med=3.57ms max=449.56ms p(90)=9.44ms  p(95)=13.92ms
-    iterations.....................: 329017 5480.703399/s
-    vus............................: 30     min=30          max=30
-    vus_max........................: 30     min=30          max=30
+    iteration_duration.............: avg=1.66ms min=312.79µs med=1.38ms max=154.13ms p(90)=2.51ms p(95)=3.16ms
+    iterations.....................: 1071754 17862.785784/s
+    vus............................: 30      min=30           max=30
+    vus_max........................: 30      min=30           max=30
 
     NETWORK
-    data_received..................: 419 MB 7.0 MB/s
-    data_sent......................: 26 MB  437 kB/s
+    data_received..................: 1.3 GB  22 MB/s
+    data_sent......................: 85 MB   1.4 MB/s
 
 
 
 
-running (1m00.0s), 00/30 VUs, 329017 complete and 0 interrupted iterations
+running (1m00.0s), 00/30 VUs, 1071754 complete and 0 interrupted iterations
 rank_ab ✓ [ 100% ] 30 VUs  1m0s
