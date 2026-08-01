@@ -53,8 +53,8 @@ class RankService(
     // (JpaRepository의 각 메서드는 자체적으로 이미 트랜잭션이 걸려 있어 없어도 안전하다)
 
     private fun getTop30FromDb(): List<RankEntry> {
-        val (thisMonthStart, nextMonthStart, prevMonthStart) = dateRanges()
-        return commitRepository.findTop30Rank(thisMonthStart, nextMonthStart, prevMonthStart)
+        val (thisMonthStart, nextMonthStart, _) = dateRanges()
+        return commitRepository.findTop30Rank(thisMonthStart, nextMonthStart)
             .map { RankEntry(it.getUserId(), it.getCurrentMonthCount(), it.getRank()) }
     }
 
