@@ -1,6 +1,7 @@
 package com.reminder.server.support
 
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
@@ -20,7 +21,8 @@ import org.springframework.test.context.ActiveProfiles
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Import(ContainerConfig::class)
+@Import(ContainerConfig::class, EndpointAuditConfig::class)
+@ExtendWith(UserCountRecorder::class)
 abstract class IntegrationTest {
 
     @Autowired

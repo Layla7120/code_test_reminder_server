@@ -8,6 +8,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.http.client.JdkClientHttpRequestFactory
 import org.springframework.web.client.RestTemplate
 
 /**
@@ -36,8 +37,13 @@ abstract class ApiTest : IntegrationTest() {
 
     // 4xx/5xx 에서 예외를 던지지 않도록 기본 에러 핸들러를 끈다.
     // 상태코드 자체가 검증 대상이기 때문이다.
+    //
+    // 요청 팩토리를 JDK HttpClient 로 바꾼다. 기본값(SimpleClientHttpRequestFactory)은
+    // HttpURLConnection 을 쓰는데 PATCH 를 지원하지 않아 "Invalid HTTP method: PATCH" 로
+    // 요청이 나가기도 전에 터진다. 아래 patch() 헬퍼는 원래부터 있었지만 이걸 호출하는
+    // 테스트가 없어서 동작하지 않는다는 사실이 드러나지 않았다.
     private val rest: RestTemplate by lazy {
-        RestTemplate().apply {
+        RestTemplate(JdkClientHttpRequestFactory()).apply {
             errorHandler = object : org.springframework.web.client.ResponseErrorHandler {
                 override fun hasError(response: org.springframework.http.client.ClientHttpResponse) = false
             }
