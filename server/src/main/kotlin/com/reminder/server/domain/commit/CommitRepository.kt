@@ -49,20 +49,23 @@ interface CommitRepository : JpaRepository<Commit, Long> {
         @Param("nextMonthStart") nextMonthStart: LocalDateTime,
     ): List<RankProjection>
 
+    // [LEFT JOIN → JOIN] — findTop30Rank 와 같은 이유이고, 여기만 빠져 있었다.
+    // 이전에는 LEFT JOIN + SUM(CASE ...) 라서 이번 달 커밋이 0건인 유저도
+    // currentMonthCount = 0 으로 DENSE_RANK 를 받았다. 그런데 Redis 경로는 ZSET 에
+    // 점수가 없으면 null 을 돌려준다(RankingRedisRepository.getUserDenseRank).
+    // 같은 유저의 순위를 묻는데 Redis 는 null, DB 는 숫자를 주는 상태였다.
+    // bench/rank_ab.js 가 두 경로의 지연시간을 A/B 로 비교하므로,
+    // 등가가 아닌 두 구현을 비교하고 있었다.
     @Query("""
         SELECT rank_table.`rank`            AS `rank`,
                rank_table.currentMonthCount AS currentMonthCount
         FROM (
             SELECT
                 u.user_id,
-                SUM(CASE WHEN c.commit_date >= :thisMonthStart AND c.commit_date < :nextMonthStart
-                     THEN 1 ELSE 0 END) AS currentMonthCount,
-                DENSE_RANK() OVER (
-                    ORDER BY SUM(CASE WHEN c.commit_date >= :thisMonthStart AND c.commit_date < :nextMonthStart
-                                  THEN 1 ELSE 0 END) DESC
-                ) AS `rank`
+                COUNT(c.commit_id) AS currentMonthCount,
+                DENSE_RANK() OVER (ORDER BY COUNT(c.commit_id) DESC) AS `rank`
             FROM users u
-            LEFT JOIN commits c
+            JOIN commits c
                 ON u.user_id = c.user_id
                 AND c.commit_date >= :thisMonthStart AND c.commit_date < :nextMonthStart
             WHERE u.active = true
