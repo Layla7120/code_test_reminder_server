@@ -1,0 +1,22 @@
+# 전송 계층(HTTP) 테스트가 없는 엔드포인트.
+#
+# 이건 예외 처리가 아니라 **부채 명세서**다.
+# 테스트를 추가하면 해당 줄을 지운다. 새 엔드포인트를 여기 추가하지 않는다 —
+# 목록에 없으면 자동으로 빌드가 깨지고, 그게 이 파일의 목적이다.
+#
+# 판정은 build/endpoint-audit.txt(EndpointAudit 계측)가 한다. 사람이 읽고 판단한 게
+# 아니라 테스트 실행 중 실제로 라우팅된 핸들러를 측정한 결과다.
+#
+# 2026-08-02 기준 7개. 감사에서 심각도 중·하로 분류된 구간이다.
+# 우선순위가 높았던 group·user·rank 도메인은 전부 지웠다.
+
+# 심각도 중 — 예외→상태코드 매핑과 응답 모양이 미검증
+CommitController#fetchAndSave    # 409/404 매핑, {saved:n} 응답 모양
+HistoryController#saveHistory    # 어느 계층에도 테스트 없음. 엔티티 직렬화 왕복
+
+# 심각도 하 — 읽기 전용, 인증 없음
+CommitController#getWeeklyActivity      # {dates:[...]} 모양, 없는 userId 동작
+CommitController#getLevelDistribution   # {level:count} 모양
+CommitController#getCommitGrass         # {thisMonth,prevMonth} 모양
+GroupController#searchGroups            # 접두 검색 정확성, 파라미터 누락 400
+GroupController#checkGroupName          # trim 동작, 파라미터 누락 400
