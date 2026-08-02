@@ -48,8 +48,10 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
 cd server && ./gradlew test
 ```
 
-Testcontainers가 실제 MySQL·Redis를 자동으로 띄운다. **26개 통과.**
-push·PR마다 GitHub Actions에서도 같은 명령이 돈다 → [`.github/workflows/test.yml`](.github/workflows/test.yml)
+Testcontainers가 실제 MySQL·Redis를 자동으로 띄운다. **74개 통과.**
+테스트가 끝나면 `verifyEndpointCoverage`가 이어 돌아, HTTP 테스트가 없는 엔드포인트가
+있으면 빌드를 깬다. push·PR마다 GitHub Actions에서도 같은 명령이 돈다
+→ [`.github/workflows/test.yml`](.github/workflows/test.yml)
 
 > Homebrew로 설치했다면 `openjdk@21`은 keg-only라 PATH에 안 잡힌다.
 > `/usr/libexec/java_home`이 못 찾으면
@@ -86,7 +88,7 @@ bash bench/run.sh     # 유저 1만/5만/10만 x Redis on/off, 약 25분
 | ORM | SQLAlchemy 2.0 | Spring Data JPA |
 | DB | MySQL | MySQL |
 | 캐싱 | Flask-Caching (프로세스 로컬) | Redis |
-| 테스트 | 없음 | Testcontainers, 26개 |
+| 테스트 | 없음 | Testcontainers, 74개 |
 
 Redis를 넣은 건 **이 규모에 과했다.** 이유와 근거는 [docs/기록.md](docs/기록.md)에 있다.
 

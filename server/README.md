@@ -45,12 +45,17 @@ cd server && ./gradlew bootRun
 ### 테스트
 
 ```bash
-cd server && ./gradlew test        # 26개. Docker만 있으면 됨
+cd server && ./gradlew test        # 74개. Docker만 있으면 됨
 ```
 
 Testcontainers가 실제 MySQL·Redis를 띄우므로 `docker compose`를 따로 켜지 않아도 됩니다.
 운영과 **같은 `infra/init.sql`**을 그대로 물리기 때문에, 엔티티와 스키마가 어긋나면
 서버를 띄우지 않아도 테스트가 잡습니다.
+
+테스트 뒤에 `verifyEndpointCoverage`가 이어 돕니다. 엔드포인트에 HTTP 테스트가 없으면
+빌드가 깨집니다 — 판정 근거는 `build/endpoint-audit.txt`(테스트 실행 중 실제로 라우팅된
+핸들러를 측정한 값)이고, 아직 못 채운 것은 사유와 함께
+`src/test/resources/endpoint-allowlist.txt`에 적혀 있습니다.
 
 ---
 
