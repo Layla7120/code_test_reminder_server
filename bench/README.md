@@ -121,10 +121,10 @@ curl -s -o /dev/null -w "%{time_total}초\n" http://localhost:8080/rank
 
 ### 3. 동시 30명 (여기가 제일 볼만하다)
 
-DB 조건으로 서버를 켜고:
+**DB 조건**으로 서버를 켜고:
 
 ```bash
-k6 run -e USERS=100000 bench/rank_ab.js
+k6 run -e MAX_USER_ID=100000 bench/rank_ab.js
 ```
 
 60초 동안 처리한 요청이 300건 아래에서 멈추고, 실패율이 20%대까지 오른다.
@@ -138,11 +138,29 @@ HikariPool-1 - Connection is not available, request timed out after 3005ms
 쿼리 하나가 1초씩 커넥션을 붙잡으니 20개 풀이 포화되고,
 뒤에 온 요청은 **쿼리를 시작해보지도 못하고** 3초 뒤 5xx로 떨어진다.
 
-Redis 조건으로 바꿔 같은 명령 → **30만 건 처리, 실패 0%.**
+**이제 터미널 A를 `Ctrl+C` 하고 `RANKING_REDIS_ENABLED=true`로 재시작한 뒤 같은 명령을 다시 돌린다.**
+
+```
+DB 조건     약 4 req/s,    실패 20%대
+Redis 조건  약 5,000 req/s, 실패 0%
+```
+
+**여기서 조건을 바꾸지 않으면 두 번 다 같은 걸 재게 된다.**
+
+> ### `MAX_USER_ID`는 DB 규모가 아니다
+>
+> `-e MAX_USER_ID` 는 `GET /rank/users?userId=N` 의 **N 을 뽑을 범위**일 뿐이다.
+> **이 값을 바꿔도 DB 에 들어 있는 유저 수는 그대로다.**
+>
+> 규모를 바꾸려면 **0번의 시드를 다시 해야 한다**(`@target_users`).
+> 시드한 유저 수와 같은 값을 넣어주면 된다.
 
 ### 4. 규모를 바꿔 기울기 느끼기
 
-0번을 `@target_users = 10000`으로 다시 하고 1~3을 반복.
+**0번의 시드부터 다시 한다** — `@target_users = 10000` 으로.
+Redis 워밍업도 다시 하고(유저가 바뀌었으므로), 1~3을 반복한다.
+`k6` 에는 `-e MAX_USER_ID=10000` 을 넣는다.
+
 `GET /rank` 단일 요청이 **990ms → 84ms**로 줄어든다. Redis 쪽은 그대로다.
 
 ### 끝나면 치우기

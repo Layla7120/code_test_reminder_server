@@ -8,7 +8,11 @@
 //   GET /rank/users?userId=N     특정 유저 1명 순위  (Redis: ZSCORE+HGET / DB: DENSE_RANK 서브쿼리)
 //
 // 실행:
-//   k6 run -e USERS=10000 -e ARM=redis bench/rank_ab.js
+//   k6 run -e MAX_USER_ID=100000 bench/rank_ab.js
+//
+// [주의] MAX_USER_ID 는 DB 규모를 바꾸지 않는다.
+// GET /rank/users?userId=N 에 넣을 N 을 뽑는 범위일 뿐이다.
+// 실제 규모는 bench/seed.sql 로 시드한 유저 수가 정한다.
 //
 // 절대값보다 "유저 수가 늘 때 기울기가 어떻게 달라지는가"를 본다.
 
@@ -17,7 +21,9 @@ import { check } from 'k6';
 import { Trend } from 'k6/metrics';
 
 const BASE = __ENV.BASE_URL || 'http://localhost:8080';
-const USERS = parseInt(__ENV.USERS || '10000', 10);
+// 조회할 userId 의 상한. DB 에 시드된 유저 수와 맞춰야 캐시 편향이 없다.
+// 이 값을 바꿔도 DB 규모는 바뀌지 않는다 — 규모는 seed.sql 이 정한다.
+const MAX_USER_ID = parseInt(__ENV.MAX_USER_ID || '10000', 10);
 
 const top30Latency = new Trend('top30_latency', true);
 const userRankLatency = new Trend('user_rank_latency', true);
@@ -44,7 +50,7 @@ export default function () {
     check(res, { 'top30 200': (r) => r.status === 200 });
   } else {
     // 매번 다른 유저를 조회해야 캐시 편향이 생기지 않는다
-    const userId = Math.floor(Math.random() * USERS) + 1;
+    const userId = Math.floor(Math.random() * MAX_USER_ID) + 1;
     const res = http.get(`${BASE}/rank/users?userId=${userId}`, {
       tags: { endpoint: 'user_rank' },
     });

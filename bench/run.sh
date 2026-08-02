@@ -32,11 +32,27 @@ KEY="rank:commit:$(TZ=Asia/Seoul date +%Y%m)"
 FAR="0 0 0 1 1 ?"
 FAST="*/5 * * * * ?"   # 워밍업 때만
 
+SERVER_LOG=/tmp/bench_server.log
+
 start() {  # $1=redis_enabled  $2=cron
-  RANKING_REDIS_ENABLED=$1 RANKING_SYNC_CRON=$2 java -jar "$JAR" >/dev/null 2>&1 &
+  # 8080 을 이미 누가 잡고 있으면 새로 띄운 서버는 바로 죽는데,
+  # curl 은 "남의 서버"에서 200 을 받아 성공한 것처럼 보인다.
+  # 그러면 의도한 조건이 아닌 서버를 상대로 측정하게 되므로 먼저 막는다.
+  if lsof -nP -iTCP:8080 -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "✗ 포트 8080 을 이미 누가 쓰고 있다. 기존 서버를 내리고 다시 실행할 것." >&2
+    exit 1
+  fi
+
+  RANKING_REDIS_ENABLED=$1 RANKING_SYNC_CRON=$2 java -jar "$JAR" > "$SERVER_LOG" 2>&1 &
   PID=$!
-  for _ in $(seq 1 90); do curl -fsS localhost:8080/rank >/dev/null 2>&1 && return; sleep 1; done
-  echo "✗ 서버가 뜨지 않았다" >&2; exit 1
+  for _ in $(seq 1 90); do
+    # 응답만 보지 말고 내가 띄운 프로세스가 살아 있는지도 같이 본다
+    kill -0 "$PID" 2>/dev/null || {
+      echo "✗ 서버가 기동 중 죽었다:" >&2; tail -5 "$SERVER_LOG" >&2; exit 1; }
+    curl -fsS localhost:8080/rank >/dev/null 2>&1 && return
+    sleep 1
+  done
+  echo "✗ 서버가 90초 안에 뜨지 않았다:" >&2; tail -5 "$SERVER_LOG" >&2; exit 1
 }
 stop() { [ -n "${PID:-}" ] || return 0; kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; PID=; sleep 2; }
 trap stop EXIT
@@ -88,7 +104,7 @@ for users in ${SCALES:-10000 50000 100000}; do
     user_ms=$(median_ms "http://localhost:8080/rank/users?userId=7")
 
     txt="$OUT/${users}_${arm}.txt"
-    k6 run -e USERS="$users" -e DURATION="${DURATION:-60s}" --summary-export="$OUT/${users}_${arm}.json" \
+    k6 run -e MAX_USER_ID="$users" -e DURATION="${DURATION:-60s}" --summary-export="$OUT/${users}_${arm}.json" \
         bench/rank_ab.js > "$txt" 2>&1
     stop
 
