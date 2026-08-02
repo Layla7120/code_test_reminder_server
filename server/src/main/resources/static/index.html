@@ -566,7 +566,23 @@
     if (box) box.textContent = JSON.stringify(data, null, 2);
   }
 
+  // 같은 요청이 두 번 나가는 것을 막는다.
+  // 빠르게 두 번 누르면 첫 요청은 201 로 성공하고 두 번째가 400(이미 참여 중)을 받는데,
+  // 화면에는 나중에 도착한 400 만 남아 "실패했는데 왜 가입돼 있지?" 가 된다.
+  const inFlight = new Set();
+
   async function req(method, path, body) {
+    const key = method + ' ' + path + ' ' + JSON.stringify(body ?? null);
+    if (inFlight.has(key)) return { status: 0, data: { error: '요청 처리 중입니다' } };
+    inFlight.add(key);
+    try {
+      return await doReq(method, path, body);
+    } finally {
+      inFlight.delete(key);
+    }
+  }
+
+  async function doReq(method, path, body) {
     const url = baseUrl() + path;
     const opts = {
       method,
