@@ -21,9 +21,11 @@ class Group(
     @Column(nullable = false)
     val memberMaxCount: Int = 5,
 
+    // updatable = false 를 뺐다. 오너가 그룹을 떠나면 남은 멤버에게 승계해야 하는데,
+    // 그 동작이 Flask 에는 있었고 마이그레이션에서 사라졌다.
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", nullable = false, updatable = false)
-    val owner: User,
+    @JoinColumn(name = "owner_id", nullable = false)
+    var owner: User,
 ) : BaseTimeEntity() {
 
     @Id
@@ -47,5 +49,9 @@ class Group(
 
     fun changePassword(encodedPw: String) {
         this.groupPw = encodedPw
+    }
+
+    fun transferOwnershipTo(newOwner: User) {
+        this.owner = newOwner
     }
 }

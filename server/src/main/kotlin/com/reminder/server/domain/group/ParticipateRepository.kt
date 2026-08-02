@@ -17,4 +17,10 @@ interface ParticipateRepository : JpaRepository<Participate, Long> {
 
     // 삭제된 행 수를 반환한다 — 비멤버의 탈퇴 요청과 실제 탈퇴를 구분하기 위함
     fun deleteByGroupAndUser(group: Group, user: User): Long
+
+    // 탈퇴 후 남은 인원. 0 이면 그룹을 지운다.
+    fun countByGroup(group: Group): Long
+
+    // 오너 승계 대상 — 가장 먼저 들어온 남은 멤버 (Flask 의 returnOldestMember 와 같은 기준)
+    fun findFirstByGroupOrderByCreatedAtAsc(group: Group): Participate?
 }

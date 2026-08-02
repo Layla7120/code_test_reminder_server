@@ -82,6 +82,26 @@ class GroupService(
         val deleted = participateRepository.deleteByGroupAndUser(group, user)
         if (deleted == 0L) throw NotGroupMemberException()
 
+        // countByGroup 은 participate 테이블 조회라, 위 삭제가 먼저 flush 된다.
+        // 그래야 아래 그룹 삭제가 FK 위반 없이 나간다.
+        val remaining = participateRepository.countByGroup(group)
+
+        // 마지막 멤버가 나가면 그룹을 지운다.
+        // 이 동작이 Flask 에는 있었는데(handleGroupLeave) 마이그레이션에서 사라져,
+        // 오너가 나가면 아무도 못 지우는 빈 그룹이 남아 있었다.
+        if (remaining == 0L) {
+            groupRepository.delete(group)
+            return
+        }
+
+        // 오너가 나갔다면 가장 먼저 들어온 남은 멤버에게 승계한다.
+        // decrementMemberCounter 는 flushAutomatically 라 이 변경을 먼저 반영한 뒤 실행된다.
+        if (group.owner.id == userId) {
+            val next = participateRepository.findFirstByGroupOrderByCreatedAtAsc(group)
+                ?: error("남은 인원이 있는데 승계 대상을 찾지 못했습니다")
+            group.transferOwnershipTo(next.user)
+        }
+
         groupRepository.decrementMemberCounter(groupId)
     }
 
