@@ -75,6 +75,36 @@ class RankPathConsistencyTest : IntegrationTest() {
         assertThat(fromRedis.map { it.rank }).containsExactly(1, 1, 2, 3, 3, 3, 4)
     }
 
+    @Test
+    @DisplayName("Redis가 비어 있으면 개인 순위도 Top30과 마찬가지로 DB로 폴백한다")
+    fun userRankFallsBackWhenRankingNotWarmedYet() {
+        val user = userRepository.save(User("gh-cold", "nick-cold", "repo"))
+        val monthStart = LocalDateTime.now(clock).withDayOfMonth(1).toLocalDate().atStartOfDay()
+        commitJdbcRepository.bulkUpsert(
+            (1..3).map {
+                CommitInsertDto(
+                    userId = user.id,
+                    commitDate = monthStart.plusHours(it.toLong()),
+                    commitUrl = "https://example.com/cold-$it",
+                    title = "문제",
+                    level = CommitLevel.GOLD.name,
+                    sha = "cold-sha-$it".padEnd(40, '0'),
+                )
+            }
+        )
+        // 스케줄러를 돌리지 않는다 → Redis 랭킹은 비어 있는 상태(초기 기동과 동일)
+
+        // Top30 은 원래도 DB 폴백으로 이 유저를 보여줬다
+        assertThat(rankService.getTop30().map { it.userId }).contains(user.id)
+
+        // 개인 순위도 같은 답을 줘야 한다.
+        // 고치기 전에는 여기서 null 이 나와, 같은 유저가 전체 랭킹엔 1등인데
+        // 자기 순위는 "없음"으로 보이는 상태였다.
+        assertThat(rankService.getUserRank(user.id))
+            .describedAs("Top30이 DB 폴백으로 보여주는 유저는 개인 순위도 나와야 한다")
+            .isNotNull()
+    }
+
     /** ranking.redis.enabled=false 인 인스턴스 — 항상 DB 경로로 간다 */
     private fun dbOnlyRankService() =
         RankService(rankingRedisRepository, commitRepository, clock, redisRankingEnabled = false)

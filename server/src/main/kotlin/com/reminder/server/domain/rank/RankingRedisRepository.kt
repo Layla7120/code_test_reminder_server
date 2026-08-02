@@ -43,6 +43,12 @@ class RankingRedisRepository(private val redisTemplate: StringRedisTemplate) {
 
     // ── Read ──────────────────────────────────────────────────────────────────
 
+    // 해당 월의 랭킹이 아직 채워지지 않았는지.
+    // "점수가 없는 유저"와 "랭킹 자체가 비어 있음"을 구분하는 데 쓴다 —
+    // 전자는 정말 커밋이 없는 것이고, 후자는 초기 기동이라 DB로 폴백해야 한다.
+    fun isEmpty(yearMonth: YearMonth): Boolean =
+        (redisTemplate.opsForZSet().zCard(rankKey(yearMonth)) ?: 0L) == 0L
+
     // Top 30: ZREVRANGE + Kotlin Dense Rank 계산 (30건이므로 메모리 부담 없음)
     fun getTop30(yearMonth: YearMonth): List<RankEntry> {
         val tuples = redisTemplate.opsForZSet()

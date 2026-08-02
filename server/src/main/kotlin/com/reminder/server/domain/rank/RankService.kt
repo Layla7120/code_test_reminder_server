@@ -37,8 +37,15 @@ class RankService(
     fun getUserRank(userId: Long): Long? {
         if (!redisRankingEnabled) return getUserRankFromDb(userId)
 
+        val yearMonth = YearMonth.now(clock)
         return try {
-            rankingRedisRepository.getUserDenseRank(userId, YearMonth.now(clock))
+            rankingRedisRepository.getUserDenseRank(userId, yearMonth)
+            // null 이 두 가지를 뜻한다는 게 문제였다.
+            //   (1) 랭킹이 아직 안 채워짐(초기 기동, 스케줄러 미실행) → DB 폴백해야 함
+            //   (2) 채워져 있는데 이 유저만 점수가 없음 → 이번 달 커밋이 없는 것
+            // 둘을 구분하지 않아, getTop30 은 DB 폴백으로 1등을 보여주는데
+            // 같은 유저의 개인 순위는 null 이 나가는 상태가 있었다.
+                ?: if (rankingRedisRepository.isEmpty(yearMonth)) getUserRankFromDb(userId) else null
         } catch (e: DataAccessException) {
             getUserRankFromDb(userId)
         }
