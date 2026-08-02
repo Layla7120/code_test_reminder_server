@@ -543,6 +543,19 @@
 
   function val(id) { return document.getElementById(id)?.value; }
 
+  // 필수 숫자 입력. 비어 있으면 null 을 서버로 보내지 않고 여기서 멈춘다.
+  // placeholder 를 입력값으로 착각하기 쉬운데, 그대로 보내면
+  // parseInt('') -> NaN -> JSON 에서 null 이 되어 서버가 400 을 뱉는다.
+  function requireNum(id, key, label) {
+    const raw = val(id);
+    const n = parseInt(raw, 10);
+    if (raw === '' || raw == null || Number.isNaN(n)) {
+      setResult(key, 0, { error: `${label} 을(를) 입력하세요` });
+      return null;
+    }
+    return n;
+  }
+
   function setResult(key, status, data) {
     const badge = document.getElementById('status-' + key);
     const box = document.getElementById('res-' + key);
@@ -594,7 +607,9 @@
   }
 
   async function updateUser() {
-    const body = { userId: parseInt(val('upd-id')) };
+    const userId = requireNum('upd-id', 'updateUser', 'User ID');
+    if (userId === null) return;
+    const body = { userId };
     if (val('upd-nick')) body.nickname = val('upd-nick');
     if (val('upd-repo')) body.repositoryName = val('upd-repo');
     const { status, data } = await req('PATCH', '/users/update', body);
@@ -607,7 +622,9 @@
   }
 
   async function fetchCommits() {
-    const { status, data } = await req('POST', '/commits', { userId: parseInt(val('fetch-uid')) });
+    const userId = requireNum('fetch-uid', 'fetchCommits', 'User ID');
+    if (userId === null) return;
+    const { status, data } = await req('POST', '/commits', { userId });
     setResult('fetchCommits', status, data);
   }
 
@@ -662,8 +679,10 @@
   }
 
   async function createGroup() {
+    const userId = requireNum('cg-uid', 'createGroup', 'User ID');
+    if (userId === null) return;
     const body = {
-      userId: parseInt(val('cg-uid')),
+      userId,
       groupName: val('cg-name'),
       password: val('cg-pw') || null,
       maxCount: parseInt(val('cg-max') || 5)
@@ -673,17 +692,42 @@
   }
 
   async function joinGroup() {
-    const body = {
-      userId: parseInt(val('jg-uid')),
-      groupId: parseInt(val('jg-gid')),
-      password: val('jg-pw') || null
-    };
+    const userId = requireNum('jg-uid', 'joinGroup', 'User ID');
+    if (userId === null) return;
+    const groupId = requireNum('jg-gid', 'joinGroup', 'Group ID');
+    if (groupId === null) return;
+    const body = { userId, groupId, password: val('jg-pw') || null };
     const { status, data } = await req('POST', '/group/member', body);
     setResult('joinGroup', status, data);
   }
 
   async function getGroupInfo() {
     const { status, data } = await req('GET', `/group/info?userId=${val('gi-uid')}`);
+    // 이 API 는 "참여 중인 모든 그룹"을 배열로 준다 (한 유저가 여러 그룹에 속할 수 있음).
+    // 통째로 뿌리면 그룹 경계가 안 보여서, 새 그룹을 만들어도
+    // "옛 그룹원이 같이 들어있다"처럼 읽힌다. 그룹별로 나눠서 보여준다.
+    if (status >= 200 && status < 300 && Array.isArray(data)) {
+      const box = document.getElementById('res-groupInfo');
+      const badge = document.getElementById('status-groupInfo');
+      if (badge) {
+        badge.textContent = status;
+        badge.className = 'status-badge status-ok';
+      }
+      if (box) {
+        box.textContent = data.length === 0
+          ? '참여 중인 그룹이 없습니다.'
+          : `참여 중인 그룹 ${data.length}개\n\n` + data.map((g, i) => {
+              const members = g.memberCommits
+                .map(m => `      ${m.rank}위  ${m.nickname}  이번달 ${m.currentMonthCount}건 (지난달 ${m.previousMonthCount}건)`)
+                .join('\n');
+              return `[${i + 1}] ${g.group.groupName || '(이름 없음)'}  #${g.group.id}\n`
+                   + `    정원 ${g.group.memberCounter}/${g.group.memberMaxCount}`
+                   + `  ${g.group.groupPw ? '비공개' : '공개'}\n`
+                   + `    멤버 ${g.memberCommits.length}명\n${members}`;
+            }).join('\n\n');
+      }
+      return;
+    }
     setResult('groupInfo', status, data);
   }
 
