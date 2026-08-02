@@ -126,6 +126,9 @@
     <div class="nav-item" onclick="showSection('joinGroup')" data-sec="joinGroup">
       <span class="method post">POST</span> 그룹 참가
     </div>
+    <div class="nav-item" onclick="showSection('leaveGroup')" data-sec="leaveGroup">
+      <span class="method delete">DELETE</span> 그룹 탈퇴
+    </div>
     <div class="nav-item" onclick="showSection('groupInfo')" data-sec="groupInfo">
       <span class="method get">GET</span> 내 그룹
     </div>
@@ -459,6 +462,36 @@
       </div>
     </div>
 
+    <!-- DELETE /group/leave -->
+    <div id="sec-leaveGroup" class="section section-hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="method delete">DELETE</span>
+          <span class="card-title">/group/leave — 그룹 탈퇴</span>
+        </div>
+        <div class="card-body">
+          <div class="url-display" id="url-leaveGroup">DELETE http://localhost:8080/group/leave?userId=1&amp;groupId=1</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="number" id="lg-uid" placeholder="1" value="1">
+            </div>
+            <div class="form-group">
+              <label>Group ID</label>
+              <input type="number" id="lg-gid" placeholder="1" value="1">
+            </div>
+            <button onclick="leaveGroup()">탈퇴</button>
+          </div>
+          <label>응답 <span id="status-leaveGroup" class="status-badge status-pending">-</span></label>
+          <div class="response-box" id="res-leaveGroup">응답이 여기 표시됩니다...</div>
+          <p style="margin-top:8px; font-size:12px; color:#7d8590;">
+            💡 마지막 멤버가 나가면 <b>그룹이 삭제</b>됩니다. 오너가 나가면 가장 먼저 들어온 멤버에게 <b>승계</b>됩니다.<br>
+            멤버가 아닌 유저가 호출하면 400 — 카운터가 잘못 줄어드는 것을 막습니다.
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- GET /group/info -->
     <div id="sec-groupInfo" class="section section-hidden">
       <div class="card">
@@ -726,6 +759,15 @@
     const body = { userId, groupId, password: val('jg-pw') || null };
     const { status, data } = await req('POST', '/group/member', body);
     setResult('joinGroup', status, data);
+  }
+
+  async function leaveGroup() {
+    const userId = requireNum('lg-uid', 'leaveGroup', 'User ID');
+    if (userId === null) return;
+    const groupId = requireNum('lg-gid', 'leaveGroup', 'Group ID');
+    if (groupId === null) return;
+    const { status, data } = await req('DELETE', `/group/leave?userId=${userId}&groupId=${groupId}`);
+    setResult('leaveGroup', status, data);
   }
 
   async function getGroupInfo() {
