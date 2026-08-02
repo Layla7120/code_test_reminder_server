@@ -590,8 +590,19 @@
     };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(url, opts);
+
+    // 본문은 반드시 한 번만 읽는다.
+    // res.json() 이 실패한 뒤 res.text() 를 부르면 스트림이 이미 소비돼
+    // "body stream already read" 로 또 던지고, 그 예외 때문에 화면 갱신이 통째로 건너뛰어진다.
+    // 201/204 처럼 본문이 없는 성공 응답에서 정확히 이게 났다 —
+    // 실제로는 성공했는데 화면에는 직전 실패가 그대로 남아 있었다.
+    const raw = await res.text();
     let data;
-    try { data = await res.json(); } catch { data = { _raw: await res.text() }; }
+    if (raw === '') {
+      data = { ok: res.ok };
+    } else {
+      try { data = JSON.parse(raw); } catch { data = { _raw: raw }; }
+    }
     return { status: res.status, data };
   }
 
