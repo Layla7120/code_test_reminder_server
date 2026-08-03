@@ -59,8 +59,12 @@ object EndpointAudit {
     fun signature(h: HandlerMethod) = "${h.beanType.simpleName}#${h.method.name}"
 
     fun report(): String = buildString {
+        // hit 에는 감사 대상이 아닌 핸들러도 섞인다(BasicErrorController). all 에서는
+        // 걸러내므로 hit.size 를 그대로 쓰면 "총계보다 하나 더 도달"처럼 보인다.
+        // 리포트의 존재 이유가 "센 게 아니라 잰 것"이므로 여기 숫자가 안 맞으면 안 된다.
+        val reached = all intersect hit
         appendLine("# 엔드포인트 계측 리포트")
-        appendLine("# 총 ${all.size} / 라우팅됨 ${hit.size} / 미도달 ${(all - hit).size}")
+        appendLine("# 총 ${all.size} / 라우팅됨 ${reached.size} / 미도달 ${(all - hit).size}")
         appendLine()
         (all - hit).sorted().forEach { appendLine("UNREACHED $it") }
         statuses.sorted().forEach { appendLine("STATUS    $it") }
