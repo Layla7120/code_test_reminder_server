@@ -1,5 +1,7 @@
 # 코테독촉기
 
+[![tests](https://github.com/Layla7120/code_test_reminder_server/actions/workflows/test.yml/badge.svg)](https://github.com/Layla7120/code_test_reminder_server/actions/workflows/test.yml)
+
 GitHub 저장소의 백준 풀이 커밋을 모아 **월별 랭킹**을 매기는 서비스.
 그룹을 만들어 서로의 진척을 비교한다.
 
