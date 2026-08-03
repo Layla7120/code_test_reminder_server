@@ -7,10 +7,8 @@ GitHub 저장소의 백준 풀이 커밋을 모아 **월별 랭킹**을 매기�
 
 **기능은 조회·정렬·삽입·삭제가 전부다.**
 
-<!-- 데모 스크린샷: 아래 "실행"으로 서버를 띄우고 http://localhost:8080 을 캡처해서
-     docs/demo.png 로 저장한 뒤, 다음 줄의 주석을 풀면 됩니다.
+
 <img src="docs/demo.png" alt="웹 데모" width="640"/>
--->
 
 ## 아키텍처
 
@@ -67,23 +65,23 @@ cd server && ./gradlew bootRun    # http://localhost:8080 (웹 데모 포함)
 
 ## 기술 스택
 
-| | Flask (원본) | Kotlin/Spring Boot (현재) |
-|---|---|---|
-| 언어 | Python 3.11 | Kotlin (JDK 21) |
-| 프레임워크 | Flask 3.1 + Smorest | Spring Boot 4.0 |
-| ORM | SQLAlchemy 2.0 | Spring Data JPA |
-| 캐싱 | Flask-Caching (프로세스 로컬) | Redis |
-| 테스트 | 없음 | Testcontainers, 74개 |
+|            | Flask (원본)                  | Kotlin/Spring Boot (현재) |
+| ---------- | ----------------------------- | ------------------------- |
+| 언어       | Python 3.11                   | Kotlin (JDK 21)           |
+| 프레임워크 | Flask 3.1 + Smorest           | Spring Boot 4.0           |
+| ORM        | SQLAlchemy 2.0                | Spring Data JPA           |
+| 캐싱       | Flask-Caching (프로세스 로컬) | Redis                     |
+| 테스트     | 없음                          | Testcontainers, 74개      |
 
 ## 주요 API
 
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| `POST` | `/commits` | GitHub에서 커밋 수집 |
-| `GET` | `/commits/grass` | 잔디(날짜별 커밋 수) |
-| `GET` | `/rank` | 전체 상위 30명 |
-| `GET` | `/rank/users?userId=` | 개인 순위 |
-| `POST` | `/group`, `/group/member` | 그룹 생성 · 참여 |
-| `GET` | `/group/info?userId=` | 내 그룹 + 멤버 현황 |
+| 메서드 | 경로                      | 설명                 |
+| ------ | ------------------------- | -------------------- |
+| `POST` | `/commits`                | GitHub에서 커밋 수집 |
+| `GET`  | `/commits/grass`          | 잔디(날짜별 커밋 수) |
+| `GET`  | `/rank`                   | 전체 상위 30명       |
+| `GET`  | `/rank/users?userId=`     | 개인 순위            |
+| `POST` | `/group`, `/group/member` | 그룹 생성 · 참여     |
+| `GET`  | `/group/info?userId=`     | 내 그룹 + 멤버 현황  |
 
 인증은 없다(`permitAll`). `userId`를 파라미터로 받는다 — 원본과 동일하며 범위에 넣지 않았다.
