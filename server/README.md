@@ -63,6 +63,14 @@ Testcontainers가 실제 MySQL·Redis를 띄우므로 `docker compose`를 따로
 
 서버 기동 후 `http://localhost:8080`에서 웹 UI로 직접 호출해볼 수 있습니다.
 
+| 주소 | 용도 |
+|---|---|
+| `http://localhost:8080/docs/swagger-ui` | Swagger UI |
+| `http://localhost:8080/docs/openapi.json` | OpenAPI 3.1 문서 |
+
+경로는 Flask 시절(`flask-smorest`)과 같습니다 — 옮기면서 빠졌던 것을 되돌린 것이라
+주소도 그대로 뒀습니다. [`../docs/기록.md`](../docs/기록.md) 참조.
+
 > **인증이 없습니다**(`permitAll`). `userId`를 클라이언트가 지정합니다.
 > 레거시와 동일하며 이번 범위에서 다루지 않았습니다 — [`../docs/기록.md`](../docs/기록.md) 참조.
 

@@ -38,3 +38,11 @@ server:
 
 github:
   token: ${GITHUB_TOKEN}
+
+# 주소를 Flask 시절과 같게 맞춘다 (app/__init__.py 의 OPENAPI_URL_PREFIX=/docs +
+# OPENAPI_SWAGGER_UI_PATH=/swagger-ui → /docs/swagger-ui). 복구가 목적이라 경로도 그대로 둔다.
+springdoc:
+  api-docs:
+    path: /docs/openapi.json
+  swagger-ui:
+    path: /docs/swagger-ui

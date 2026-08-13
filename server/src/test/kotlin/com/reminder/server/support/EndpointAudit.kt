@@ -155,9 +155,11 @@ class EndpointAuditConfig : WebMvcConfigurer {
         val mapping = event.applicationContext
             .getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping::class.java)
         mapping.handlerMethods.values
-            // Spring 이 등록하는 기본 에러 핸들러는 감사 대상이 아니다.
-            // 빼지 않으면 항상 미도달로 잡혀 리포트에 상시 노이즈가 남는다.
-            .filterNot { it.beanType.simpleName == "BasicErrorController" }
+            // 감사 대상은 우리가 작성한 엔드포인트다. 프레임워크가 스스로 등록하는 것
+            // (BasicErrorController, springdoc 의 /docs/**)은 우리가 테스트할 대상이 아니고,
+            // 빼지 않으면 항상 미도달로 잡혀 verifyEndpointCoverage 가 빌드를 깨뜨린다.
+            // 클래스 이름을 하나씩 나열하는 대신 패키지로 거른다 — 의존성이 늘어도 규칙이 그대로다.
+            .filter { it.beanType.packageName.startsWith("com.reminder.server") }
             .forEach { EndpointAudit.all += EndpointAudit.signature(it) }
 
         // 테스트 JVM 이 끝날 때 리포트를 남긴다. 한 번만 등록한다.

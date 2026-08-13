@@ -27,6 +27,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
+
+	// Flask 의 flask-smorest 가 하던 API 문서화를 되돌린 것이다 — 신규 도입이 아니라 복구다.
+	// Spring Boot BOM 이 관리하지 않는 서드파티라 버전을 직접 적는다 (3.1.0 부터 Boot 4 지원).
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-redis-test")
