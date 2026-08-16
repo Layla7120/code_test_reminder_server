@@ -21,10 +21,7 @@ import java.time.LocalDateTime
  *   1. 운영 — Redis 장애로 폴백이 발동한 순간 사용자가 보는 순위가 바뀐다
  *   2. 측정 — A/B의 두 조건이 애초에 다른 것을 계산하고 있으므로 비교가 성립하지 않는다
  *
- * findTop30Rank 를 "응답에 쓰이는 컬럼만" 조회하도록 줄이면서
- * LEFT JOIN 을 INNER JOIN 으로 바꿨다. 커밋 0건인 유저를 제외하는 이 변경이
- * 오히려 Redis 경로(점수가 있는 유저만 ZSET에 담김)와 동작을 일치시킨다 —
- * 그 일치를 여기서 고정한다.
+ * findTop30Rank 의 LEFT JOIN 을 INNER JOIN 으로 바꾼 것이 Redis 경로와 동작을 일치시킨다 — 그 일치를 고정한다. 경위: docs/기록.md
  */
 class RankPathConsistencyTest : IntegrationTest() {
 

@@ -9,7 +9,8 @@ interface CommitRepository : JpaRepository<Commit, Long> {
 
     // ── 랭킹 ──────────────────────────────────────────────────────────────────
 
-    // dense_rank() 윈도우 함수 → native query 불가피 (JPQL 미지원)
+    // dense_rank() 윈도우 함수 — HQL 로도 된다(Hibernate 6.1+ over()). 실행되는 SQL 을
+    // 그대로 읽으려고 native 를 택한 것이지 제약이 아니다.
     //
     // [인덱스 활용 방식]
     // YEAR(commit_date) 방식(수정 전): 함수로 컬럼을 감싸면 B-Tree 인덱스 탐색 불가 → Full Scan
@@ -19,12 +20,7 @@ interface CommitRepository : JpaRepository<Commit, Long> {
     // DB 내장 NOW()를 쓰면 "특정 시점 랭킹" 테스트가 불가능
     // → 서비스 레이어에서 Clock으로 계산한 값을 파라미터로 전달
     //
-    // [응답에 쓰이는 컬럼만 조회한다]
-    // 이전 버전은 github_id·nickname·previousMonthCount를 함께 뽑았는데
-    // 유일한 소비자(RankService.getTop30FromDb)는 userId·currentMonthCount·rank만 쓴다.
-    // 안 쓰는 VARCHAR 두 개가 GROUP BY에 들어가면서 넓은 정렬 키로 그룹핑이 일어나고,
-    // 지난달 집계 때문에 조인 범위도 2개월로 늘어나 있었다.
-    // 유저 10만 기준 실측: 4,882ms → 531ms (9.2배). DENSE_RANK 자체 비용은 9ms에 불과했다.
+    // 안 쓰는 컬럼을 빼면 GROUP BY 키가 좁아진다 (10만 유저 4,882→531ms). 경위: docs/기록.md
     //
     // [LEFT JOIN → JOIN]
     // 커밋이 0건인 유저는 Top 30에 들어갈 수 없다. 또한 Redis 경로(ZSET)도 점수가 있는
@@ -49,13 +45,7 @@ interface CommitRepository : JpaRepository<Commit, Long> {
         @Param("nextMonthStart") nextMonthStart: LocalDateTime,
     ): List<RankProjection>
 
-    // [LEFT JOIN → JOIN] — findTop30Rank 와 같은 이유이고, 여기만 빠져 있었다.
-    // 이전에는 LEFT JOIN + SUM(CASE ...) 라서 이번 달 커밋이 0건인 유저도
-    // currentMonthCount = 0 으로 DENSE_RANK 를 받았다. 그런데 Redis 경로는 ZSET 에
-    // 점수가 없으면 null 을 돌려준다(RankingRedisRepository.getUserDenseRank).
-    // 같은 유저의 순위를 묻는데 Redis 는 null, DB 는 숫자를 주는 상태였다.
-    // bench/rank_ab.js 가 두 경로의 지연시간을 A/B 로 비교하므로,
-    // 등가가 아닌 두 구현을 비교하고 있었다.
+    // [LEFT JOIN → JOIN] findTop30Rank 와 같은 이유 — 여기만 빠져 있어 두 경로가 어긋나 있었다. 경위: docs/기록.md
     @Query("""
         SELECT rank_table.`rank`            AS `rank`,
                rank_table.currentMonthCount AS currentMonthCount

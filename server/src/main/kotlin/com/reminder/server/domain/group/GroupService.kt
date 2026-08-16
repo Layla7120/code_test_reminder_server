@@ -37,10 +37,7 @@ class GroupService(
         if (updated == 0) throw GroupFullException()
         participateRepository.save(Participate(group, owner))
 
-        // incrementMemberCounterIfNotFull은 @Modifying 벌크 UPDATE라 DB는 바뀌지만
-        // Hibernate가 세터를 거치지 않아 위 group 객체의 memberCounter는 여전히 0이다.
-        // 그대로 반환하면 응답의 memberCount가 항상 0으로 나간다. clearAutomatically가
-        // 걸려있어 이 재조회는 1차 캐시가 아니라 DB에서 정확한 값을 다시 읽어온다.
+        // 벌크 UPDATE는 위 group 객체의 memberCounter를 갱신하지 않는다 — 재조회 없이 반환하면 응답이 0이다. 경위: docs/기록.md
         return groupRepository.findById(group.id).orElseThrow { GroupNotFoundException(group.id) }
     }
 

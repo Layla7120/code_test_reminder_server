@@ -18,9 +18,7 @@ class RankingRedisRepository(private val redisTemplate: StringRedisTemplate) {
         fun denseRankKey(yearMonth: YearMonth) = "rank:dense:${yearMonth.format(KEY_FORMAT)}"
     }
 
-    // ZADD GT Lua 스크립트
-    // 배치가 DB에서 읽은 100을 Redis에 반영할 때,
-    // 실시간 ZINCRBY로 이미 101이 된 경우 덮어쓰지 않음 (Lost Update 방지)
+    // ZADD GT Lua 스크립트 — 실시간 ZINCRBY가 이미 올려둔 값을 배치가 되돌리지 않는다 (Lost Update 방지). 경위: docs/기록.md
     // Redis ZADD GT 플래그와 동일한 동작, 구버전 Redis 호환성 확보
     private val zAddGtScript: RedisScript<Long> = RedisScript.of(
         """
@@ -60,17 +58,9 @@ class RankingRedisRepository(private val redisTemplate: StringRedisTemplate) {
             .toDenseRankEntries()
     }
 
-    // 사용자 개별 Dense Rank — Graceful Degradation
-    //
-    // HASH 구조: score(점수) → denseRank
-    //   - userId → rank 가 아님
-    //   - 같은 점수를 가진 유저가 100명이어도 HASH 엔트리는 1개
-    //   - Cache Miss 조건: "배치 이후 처음 등장한 새 점수"일 때만 발생
-    //
-    // Cache Hit  O(1): 배치가 구워둔 score → rank 즉시 반환
-    // Cache Miss O(log N): 실시간 증분으로 새 점수가 생긴 상태
-    //   → ZREVRANK(일반 순위)로 우회. 동점자 처리는 일시 불완전하나
-    //      다음 배치가 돌 때까지만의 비즈니스 오차 — 시스템 가용성 우선
+    // HASH 는 userId → rank 가 아니라 score → rank 다. 같은 점수 유저가 몇 명이든 엔트리는 1개.
+    // Cache Miss(배치 이후 처음 나온 점수)는 ZREVRANK 로 우회하므로 그때만 동점자 처리가
+    // 부정확하다 — 다음 배치까지의 오차를 받아들이고 가용성을 택했다.
     fun getUserDenseRank(userId: Long, yearMonth: YearMonth): Long? {
         val zsetKey = rankKey(yearMonth)
         val hashKey = denseRankKey(yearMonth)

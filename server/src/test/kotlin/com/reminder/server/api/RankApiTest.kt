@@ -23,10 +23,7 @@ import java.time.LocalDateTime
  * 응답 본문의 모양 — List<RankResponse>{userId, commitCount, rank} 와
  * {"rank": n|null} — 은 컨트롤러를 지나야만 존재한다.
  *
- * [fixture 를 JdbcTemplate 으로 만드는 이유]
- * 커밋을 만드는 유일한 API 는 POST /commits 인데, 이건 GithubClient 를 호출한다.
- * MockGithubClient 는 @Profile("load-test") 라 test 프로파일에서 뜨지 않는다.
- * 그래서 준비 데이터만 SQL 로 넣고, 검증은 전부 HTTP 응답으로만 한다.
+ * fixture 만 SQL 로 넣는다 — POST /commits 가 test 프로파일에 없는 MockGithubClient 를 타기 때문. 검증은 전부 HTTP 응답으로.
  *
  * Redis 는 @BeforeEach 에서 flushDb 되므로 두 엔드포인트 모두 DB 폴백 경로를 탄다.
  * 랭킹 계산이 결정론적으로 도는 상태다.

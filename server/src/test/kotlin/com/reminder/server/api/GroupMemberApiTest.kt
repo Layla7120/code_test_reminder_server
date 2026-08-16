@@ -9,10 +9,7 @@ import org.springframework.http.HttpStatus
 /**
  * POST /group/member — 중복 참여와 정원 초과.
  *
- * 정원 초과(GroupFullException)를 건드리는 테스트가 GroupJoinConcurrencyTest 하나뿐이었다.
- * 동시성 테스트가 있다고 순차 정원 초과가 검증되는 게 아니다 — 동시 요청 20개를
- * 던지는 테스트는 "두 번째 사람이 들어가려 할 때 무슨 상태 코드가 나가는가"를 답하지
- * 않는다. 그리고 그 테스트는 서비스를 직접 부르므로 상태 코드 자체가 존재하지 않는다.
+ * 정원은 동시성 테스트만 있었다 — 동시 요청 20개는 "두 번째 사람이 순차로 들어올 때 무슨 상태 코드가 나가는가"를 답하지 않는다. 경위: docs/기록.md
  *
  * 중복 참여(AlreadyInGroupException)는 어느 계층에도 테스트가 없었다.
  *

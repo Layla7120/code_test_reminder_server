@@ -13,10 +13,7 @@ class RankService(
     private val rankingRedisRepository: RankingRedisRepository,
     private val commitRepository: CommitRepository,
     private val clock: Clock,
-    // false면 Redis를 건너뛰고 항상 DB 경로로 랭킹을 계산한다.
-    // 별도 구현이 아니라 아래 "Redis 장애 폴백"과 똑같은 경로를 강제로 태우는 스위치다.
-    // 목적: Redis 오프로딩의 효과를 규모별로 재는 A/B 측정에서 변수 하나만 바꾸기 위함.
-    //       동시에 "Redis가 죽으면 얼마나 느려지는가"에 대한 답도 이 스위치로 잰다.
+    // false면 아래 "Redis 장애 폴백"과 똑같은 DB 경로를 강제로 탄다 — A/B 측정과 장애 시나리오의 변수. 경위: docs/기록.md
     @Value("\${ranking.redis.enabled:true}") private val redisRankingEnabled: Boolean = true,
 ) {
     fun getTop30(): List<RankEntry> {
@@ -40,11 +37,7 @@ class RankService(
         val yearMonth = YearMonth.now(clock)
         return try {
             rankingRedisRepository.getUserDenseRank(userId, yearMonth)
-            // null 이 두 가지를 뜻한다는 게 문제였다.
-            //   (1) 랭킹이 아직 안 채워짐(초기 기동, 스케줄러 미실행) → DB 폴백해야 함
-            //   (2) 채워져 있는데 이 유저만 점수가 없음 → 이번 달 커밋이 없는 것
-            // 둘을 구분하지 않아, getTop30 은 DB 폴백으로 1등을 보여주는데
-            // 같은 유저의 개인 순위는 null 이 나가는 상태가 있었다.
+            // null 은 "랭킹 미구축"과 "이 유저만 점수 없음" 둘 다라 isEmpty 로 가른다 — RankPathConsistencyTest.
                 ?: if (rankingRedisRepository.isEmpty(yearMonth)) getUserRankFromDb(userId) else null
         } catch (e: DataAccessException) {
             getUserRankFromDb(userId)
@@ -53,11 +46,8 @@ class RankService(
 
     // ── DB 폴백 (Redis 장애 또는 초기 기동 시) ────────────────────────────────
     //
-    // private 메서드에는 @Transactional을 붙이지 않는다. Spring AOP 프록시는
-    // "외부에서 프록시를 거쳐 들어오는 호출"만 가로채는데, 여기는 같은 클래스 안의
-    // self-invocation(getTop30() → getTop30FromDb())이라 프록시를 안 거친다.
-    // 게다가 private 메서드는 애초에 오버라이드가 불가능해 프록시 대상도 될 수 없다.
-    // (JpaRepository의 각 메서드는 자체적으로 이미 트랜잭션이 걸려 있어 없어도 안전하다)
+    // @Transactional 을 붙이지 않는다 — self-invocation 이라 프록시를 안 거치고, private 은 대상도 아니다.
+    // (JpaRepository 메서드는 자체 트랜잭션이 있어 없어도 안전하다)
 
     private fun getTop30FromDb(): List<RankEntry> {
         val (thisMonthStart, nextMonthStart, _) = dateRanges()

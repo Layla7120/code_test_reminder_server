@@ -24,9 +24,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  * 테스트가 무엇을 실제로 검증했는지 **측정**한다.
  *
  * [왜 필요했나]
- * "이 테스트가 소유권 검사를 검증하나?" 를 사람이나 모델이 읽어서 판단하면 매번 답이
- * 달라진다. 대신 테스트를 돌려서 실제로 무슨 일이 일어났는지 기록하면 답이 하나로
- * 고정된다. 판단이 아니라 측정이다.
+ * "이 테스트가 X 를 검증하나" 를 사람이 읽어 판단하면 매번 답이 달라진다 — 판단이 아니라 측정이다. 경위: docs/기록.md
  *
  * 네 가지를 기록한다:
  *   1. 등록된 엔드포인트 전체       (라우팅 테이블)
@@ -155,10 +153,7 @@ class EndpointAuditConfig : WebMvcConfigurer {
         val mapping = event.applicationContext
             .getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping::class.java)
         mapping.handlerMethods.values
-            // 감사 대상은 우리가 작성한 엔드포인트다. 프레임워크가 스스로 등록하는 것
-            // (BasicErrorController, springdoc 의 /docs/**)은 우리가 테스트할 대상이 아니고,
-            // 빼지 않으면 항상 미도달로 잡혀 verifyEndpointCoverage 가 빌드를 깨뜨린다.
-            // 클래스 이름을 하나씩 나열하는 대신 패키지로 거른다 — 의존성이 늘어도 규칙이 그대로다.
+            // 감사 대상은 우리가 쓴 코드다 — 이름이 아니라 패키지로 걸러 의존성이 늘어도 규칙이 그대로다. 경위: docs/기록.md
             .filter { it.beanType.packageName.startsWith("com.reminder.server") }
             .forEach { EndpointAudit.all += EndpointAudit.signature(it) }
 

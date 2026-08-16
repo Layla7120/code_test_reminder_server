@@ -21,10 +21,7 @@ import java.time.YearMonth
  * 같은 githubId/repositoryName은 항상 같은 sha 목록을 돌려주므로,
  * 짧은 간격으로 GitHub을 재조회했는데 새 커밋이 없는 실제 상황을 그대로 재현한다.
  *
- * 왜 이게 버그인가:
- *   CommitJdbcRepository.bulkUpsert()는 ON DUPLICATE KEY UPDATE라 이미 있는 sha를 조용히 건너뛴다.
- *   그런데 CommitService는 "삽입 시도한 개수"(dtos.size)를 그대로 랭킹 증분으로 발행했다 —
- *   실제 삽입 여부와 무관하게 매번 같은 수만큼 점수가 오른다.
+ * 왜 이게 버그인가: bulkUpsert 는 이미 있는 sha 를 조용히 건너뛰는데 증분은 요청 개수(dtos.size)였다. 경위: docs/기록.md
  */
 @ActiveProfiles("load-test")
 class CommitDuplicateFetchTest : IntegrationTest() {

@@ -21,10 +21,8 @@ import kotlin.random.Random
  * POST /history로 대체하면 CommitSavedEvent가 발행되지 않아 Redis 정합성 검증이 불가능.
  *
  * [결정론적 응답 — 중요]
- * githubId/repositoryName 조합마다 항상 같은 sha 목록을 돌려준다.
- * 실제 GitHub 저장소도 짧은 간격으로 재조회하면 새 커밋 없이 같은 응답을 준다 —
- * 이전 버전(매 호출 UUID.randomUUID())은 이 상황을 만들 수 없어서
- * "같은 커밋을 재수집하면 랭킹 점수가 중복 계상되는" 버그를 부하 테스트로 한 번도 잡지 못했다.
+ * githubId/repositoryName 조합마다 항상 같은 sha 목록을 돌려준다. 이전 버전(매 호출 UUID)은
+ * 중복이 구조적으로 불가능해 재수집 버그를 부하 테스트로 못 잡았다. 경위: docs/기록.md
  *
  * [실행]
  * SPRING_PROFILES_ACTIVE=load-test ./gradlew bootRun

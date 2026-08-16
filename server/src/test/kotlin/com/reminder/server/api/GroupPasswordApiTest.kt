@@ -9,10 +9,7 @@ import org.springframework.http.HttpStatus
 /**
  * PATCH /group/password — 감사에서 심각도 1위로 나온 구간.
  *
- * GroupService.changePassword 에 `if (group.owner.id != userId) throw NotGroupOwnerException()`
- * 이 있는데, 이 엔드포인트를 호출하는 테스트가 저장소 전체에 하나도 없었다.
- * 막아뒀다고 믿고 있었을 뿐 확인한 적이 없는 상태였다 — 그 줄을 지워도 아무 테스트도
- * 빨간불이 나지 않았다.
+ * GroupService.changePassword 의 오너 검사에 어느 계층에도 테스트가 없었다 — 그 줄을 지워도 빨간불이 안 났다. 경위: docs/기록.md
  *
  * 상태 코드만 보지 않는다. 거부된 뒤 비밀번호가 실제로 그대로인지까지 확인한다.
  * 거부는 하면서 값은 바뀌는 경우가 이 계열의 전형적인 결함이다.

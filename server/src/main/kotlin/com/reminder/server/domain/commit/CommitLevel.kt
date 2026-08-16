@@ -6,8 +6,6 @@ enum class CommitLevel {
     BRONZE, SILVER, GOLD, PLATINUM, DIAMOND, RUBY, UNRATED;
 
     companion object {
-        // 알 수 없는 레벨값은 조용히 저장하지 않고 즉시 실패
-        // GitHub 커밋 메시지 파싱 실패 = 커밋 형식 자체가 잘못된 것 → 호출자가 처리해야 함
         // "Gold IV", "Silver III" 등 BOJ 티어 번호 포함 → 첫 번째 단어만 매핑
         // 매핑 실패("level 1" 등 비BOJ 포맷) → UNRATED로 저장 (커밋 자체는 유효)
         fun from(raw: String): CommitLevel =
