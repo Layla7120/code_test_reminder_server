@@ -1,5 +1,7 @@
 package com.reminder.server.domain.commit
 
+import com.reminder.server.domain.rank.UserMonthlyScoreRepository
+import com.reminder.server.domain.rank.toScoreMonth
 import com.reminder.server.domain.user.UserRepository
 import com.reminder.server.global.exception.CommitFetchAlreadyInProgressException
 import com.reminder.server.global.exception.UserNotFoundException
@@ -18,6 +20,7 @@ class CommitService(
     private val commitRepository: CommitRepository,
     private val commitJdbcRepository: CommitJdbcRepository,
     private val userRepository: UserRepository,
+    private val userMonthlyScoreRepository: UserMonthlyScoreRepository,
     private val githubClient: GithubClientPort,
     private val redisTemplate: StringRedisTemplate,
     private val eventPublisher: ApplicationEventPublisher,
@@ -53,6 +56,12 @@ class CommitService(
         // sha 정렬 후 bulk upsert (InnoDB Next-Key Lock 순서 보장 → 데드락 방지)
         commitJdbcRepository.bulkUpsert(dtos)
 
+        // 방금 쓴 커밋을 같은 트랜잭션에서 다시 세어 절대값으로 덮어쓴다 — 이벤트도 AFTER_COMMIT 도 안 쓴다.
+        // newCommits 가 아니라 dtos 기준인 이유: 절대값이라 안 바뀐 달을 다시 써도 무해하고 이쪽이 안전하다.
+        dtos.map { YearMonth.from(it.commitDate) }
+            .distinct()
+            .forEach { yearMonth -> recomputeMonthlyScore(userId, yearMonth) }
+
         // 월별로 나눠 발행 — 버킷은 서버의 "지금"이 아니라 커밋의 실제 날짜 기준.
         // YearMonth.now(clock)을 쓰면 월초에 지난달 커밋을 수집할 때
         // 이번달 ZSET에 잘못 가산되어 다음 달까지 정합성이 어긋난다.
@@ -66,6 +75,13 @@ class CommitService(
             }
 
         return newCommits.size
+    }
+
+    private fun recomputeMonthlyScore(userId: Long, yearMonth: YearMonth) {
+        val monthStart = yearMonth.atDay(1).atStartOfDay()
+        userMonthlyScoreRepository.recompute(
+            userId, yearMonth.toScoreMonth(), monthStart, monthStart.plusMonths(1),
+        )
     }
 
     // ── 커밋 현황 조회 ────────────────────────────────────────────────────────
