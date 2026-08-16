@@ -43,6 +43,7 @@ abstract class IntegrationTest {
     }
 
     companion object {
-        private val CLEANUP_ORDER = listOf("participate", "commits", "history", "`groups`", "users")
+        private val CLEANUP_ORDER =
+            listOf("participate", "commits", "history", "`groups`", "user_monthly_score", "users")
     }
 }

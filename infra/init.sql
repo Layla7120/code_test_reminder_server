@@ -64,3 +64,15 @@ CREATE TABLE IF NOT EXISTS history (
     solve_time  VARCHAR(10)  NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
+
+-- 월별 커밋 수 집계. 랭킹 조회가 commits 전체를 매번 세지 않게 한다.
+-- 컬럼명이 score_month 인 이유: YEAR_MONTH 는 MySQL 예약어(INTERVAL ... YEAR_MONTH)라
+-- 백틱 없이는 문법 오류가 난다.
+CREATE TABLE IF NOT EXISTS user_monthly_score (
+    user_id     BIGINT   NOT NULL,
+    score_month CHAR(6)  NOT NULL,          -- 'yyyyMM'
+    score       INT      NOT NULL,
+    PRIMARY KEY (user_id, score_month),
+    INDEX idx_rank (score_month, score DESC),
+    CONSTRAINT fk_ums_user FOREIGN KEY (user_id) REFERENCES users (user_id)
+);

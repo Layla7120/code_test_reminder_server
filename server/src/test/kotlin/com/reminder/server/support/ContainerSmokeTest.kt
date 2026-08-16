@@ -26,7 +26,7 @@ class ContainerSmokeTest : IntegrationTest() {
     lateinit var redisTemplate: StringRedisTemplate
 
     @Test
-    @DisplayName("MySQL 컨테이너에 infra/init.sql 의 테이블 5개가 만들어진다")
+    @DisplayName("MySQL 컨테이너에 infra/init.sql 의 테이블 6개가 만들어진다")
     fun mysqlSchemaIsApplied() {
         val tables = jdbcTemplate.queryForList(
             "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()",
@@ -34,7 +34,9 @@ class ContainerSmokeTest : IntegrationTest() {
         ).map { it.lowercase() }
 
         assertThat(tables)
-            .containsExactlyInAnyOrder("users", "commits", "groups", "participate", "history")
+            .containsExactlyInAnyOrder(
+                "users", "commits", "groups", "participate", "history", "user_monthly_score",
+            )
     }
 
     @Test
