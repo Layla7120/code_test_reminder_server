@@ -58,9 +58,14 @@ class CommitService(
 
         // 방금 쓴 커밋을 같은 트랜잭션에서 다시 세어 절대값으로 덮어쓴다 — 이벤트도 AFTER_COMMIT 도 안 쓴다.
         // newCommits 가 아니라 dtos 기준인 이유: 절대값이라 안 바뀐 달을 다시 써도 무해하고 이쪽이 안전하다.
-        dtos.map { YearMonth.from(it.commitDate) }
-            .distinct()
-            .forEach { yearMonth -> recomputeMonthlyScore(userId, yearMonth) }
+        //
+        // 비활성 유저는 건너뛴다. 랭킹 쿼리에 active 필터가 없어서, 여기서 행을 쓰면
+        // 탈퇴한 유저가 재수집만으로 랭킹에 되살아난다.
+        if (user.active) {
+            dtos.map { YearMonth.from(it.commitDate) }
+                .distinct()
+                .forEach { yearMonth -> recomputeMonthlyScore(userId, yearMonth) }
+        }
 
         // 월별로 나눠 발행 — 버킷은 서버의 "지금"이 아니라 커밋의 실제 날짜 기준.
         // YearMonth.now(clock)을 쓰면 월초에 지난달 커밋을 수집할 때

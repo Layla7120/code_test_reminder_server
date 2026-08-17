@@ -35,15 +35,15 @@ interface UserMonthlyScoreRepository : JpaRepository<UserMonthlyScore, UserMonth
         @Param("to") to: LocalDateTime,
     )
 
-    // score > 0 은 "커밋 0건인 유저는 랭킹에 없다", active 는 탈퇴 유저 제외.
+    // score > 0 은 "커밋 0건인 유저는 랭킹에 없다".
+    // 비활성 유저를 빼는 일은 여기가 아니라 deleteUser 가 행을 지워서 한다 — users 를 조인하면
+    // 옵티마이저가 idx_rank 를 버리고 users 를 풀스캔한다 (50k 기준 87ms vs 0.5ms).
     // 동순위 계산은 SQL 이 아니라 toDenseRankEntries 가 한다.
     @Query(
         """
-        SELECT s FROM UserMonthlyScore s, User u
-        WHERE u.id = s.userId
-          AND s.scoreMonth = :scoreMonth
+        SELECT s FROM UserMonthlyScore s
+        WHERE s.scoreMonth = :scoreMonth
           AND s.score > 0
-          AND u.active = true
         ORDER BY s.score DESC, s.userId
         """
     )
@@ -53,15 +53,22 @@ interface UserMonthlyScoreRepository : JpaRepository<UserMonthlyScore, UserMonth
     fun findScore(@Param("userId") userId: Long, @Param("scoreMonth") scoreMonth: String): Int?
 
     // dense rank = 나보다 높은 점수의 "종류" 수 + 1.
-    // 커밋 수는 값의 종류가 적어서(10만 명이어도 distinct score 는 수십 개) 이 셈이 싸다.
+    // 결과는 distinct 개수지만 비용은 아니다 — 내 점수 위의 행을 전부 훑는다.
+    // 커버링 인덱스라 행당은 싸도 50k 유저 중앙값에서 25,000행 11ms 다. 루스 인덱스 스캔은 안 걸린다.
+    // active 필터가 없는 이유는 findTop 과 같다.
     @Query(
         """
-        SELECT COUNT(DISTINCT s.score) FROM UserMonthlyScore s, User u
-        WHERE u.id = s.userId
-          AND s.scoreMonth = :scoreMonth
-          AND u.active = true
+        SELECT COUNT(DISTINCT s.score) FROM UserMonthlyScore s
+        WHERE s.scoreMonth = :scoreMonth
           AND s.score > :score
         """
     )
     fun countHigherDistinctScores(@Param("scoreMonth") scoreMonth: String, @Param("score") score: Int): Long
+
+    // 비활성 유저는 행 자체를 갖지 않는다는 불변조건을 세우는 쪽.
+    // 랭킹 쿼리에서 active 필터를 뺄 수 있는 근거가 전부 여기에 있다.
+    @Transactional
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM UserMonthlyScore s WHERE s.userId = :userId")
+    fun deleteAllByUserId(@Param("userId") userId: Long)
 }

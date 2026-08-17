@@ -20,6 +20,9 @@ import java.time.YearMonth
  * 증명하는 주장: "집계 테이블은 commits 를 다시 센 절대값을 담고, 읽기 쿼리는 랭킹 규칙을 지킨다"
  *
  * 아직 아무도 이 저장소를 읽지 않는 단계라, 읽는 쪽이 붙기 전에 쿼리 자체를 고정해둔다.
+ *
+ * 비활성 유저 제외는 여기서 검증하지 않는다 — 쿼리가 아니라 행 삭제로 하는 일이라
+ * UserDeactivationApiTest 가 HTTP 로 확인한다.
  */
 class UserMonthlyScoreRepositoryTest : IntegrationTest() {
 
@@ -77,17 +80,33 @@ class UserMonthlyScoreRepositoryTest : IntegrationTest() {
     }
 
     @Test
-    @DisplayName("findTop 은 0점 유저와 비활성 유저를 빼고 점수 내림차순으로 준다")
-    fun findTopExcludesZeroAndInactive() {
+    @DisplayName("findTop 은 0점 유저를 빼고 점수 내림차순으로 준다")
+    fun findTopExcludesZeroScores() {
         val ranked = givenUser("ums-top-ranked", score = 3)
         val higher = givenUser("ums-top-higher", score = 9)
         givenUser("ums-top-zero", score = 0)
-        givenUser("ums-top-inactive", score = 7, active = false)
 
         val top = scoreRepository.findTop(scoreMonth(), Limit.of(30))
 
         assertThat(top.map { it.userId }).containsExactly(higher, ranked)
         assertThat(top.map { it.score }).containsExactly(9, 3)
+    }
+
+    @Test
+    @DisplayName("deleteAllByUserId 가 그 유저의 모든 달 점수를 지운다 — 비활성 유저를 랭킹에서 빼는 유일한 수단")
+    fun deleteAllByUserIdRemovesEveryMonth() {
+        val user = givenUser("ums-del", score = 4)
+        val other = givenUser("ums-del-other", score = 6)
+        val lastMonth = YearMonth.now(clock).minusMonths(1)
+        scoreRepository.save(UserMonthlyScore(user, lastMonth.toScoreMonth(), 9))
+
+        scoreRepository.deleteAllByUserId(user)
+
+        assertThat(scoreRepository.findScore(user, scoreMonth())).isNull()
+        assertThat(scoreRepository.findScore(user, lastMonth.toScoreMonth())).isNull()
+        assertThat(scoreRepository.findScore(other, scoreMonth()))
+            .describedAs("남의 점수는 건드리지 않는다")
+            .isEqualTo(6)
     }
 
     @Test
@@ -105,19 +124,16 @@ class UserMonthlyScoreRepositoryTest : IntegrationTest() {
         givenUser("ums-cnt-b", score = 9)
         givenUser("ums-cnt-c", score = 5)
         givenUser("ums-cnt-d", score = 2)
-        givenUser("ums-cnt-inactive", score = 100, active = false)
 
-        // 9 와 5 두 종류 — 9점이 두 명이어도 1로 세고, 비활성 유저의 100점은 안 센다
+        // 9 와 5 두 종류 — 9점이 두 명이어도 1로 센다
         assertThat(scoreRepository.countHigherDistinctScores(scoreMonth(), 2)).isEqualTo(2)
         assertThat(scoreRepository.countHigherDistinctScores(scoreMonth(), 9)).isZero()
     }
 
     // ── fixture ───────────────────────────────────────────────────────────────
 
-    private fun givenUser(githubId: String, score: Int? = null, active: Boolean = true): Long {
-        val user = User(githubId, "nick-$githubId", "repo")
-        if (!active) user.deactivate()
-        val saved = userRepository.save(user)
+    private fun givenUser(githubId: String, score: Int? = null): Long {
+        val saved = userRepository.save(User(githubId, "nick-$githubId", "repo"))
         if (score != null) scoreRepository.save(UserMonthlyScore(saved.id, scoreMonth(), score))
         return saved.id
     }
