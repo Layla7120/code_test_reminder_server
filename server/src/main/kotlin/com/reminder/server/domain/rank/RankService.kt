@@ -1,70 +1,48 @@
 package com.reminder.server.domain.rank
 
-import com.reminder.server.domain.commit.CommitRepository
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.dao.DataAccessException
+import org.springframework.data.domain.Limit
 import org.springframework.stereotype.Service
 import java.time.Clock
-import java.time.LocalDateTime
 import java.time.YearMonth
 
+/**
+ * 랭킹 조회. 진실 원천은 user_monthly_score 하나다.
+ *
+ * 경로가 하나라 폴백이라는 개념이 없다 — Redis 장애 분기도, ranking.redis.enabled 스위치도
+ * 없다. 둘 다 "경로가 둘"이라서 필요했던 것이고, 그 둘이 어긋나 있던 게 51abeb7 이었다.
+ *
+ * @Transactional 을 붙이지 않는다 — JpaRepository 메서드는 자체 트랜잭션이 있다.
+ */
 @Service
 class RankService(
-    private val rankingRedisRepository: RankingRedisRepository,
-    private val commitRepository: CommitRepository,
+    private val userMonthlyScoreRepository: UserMonthlyScoreRepository,
     private val clock: Clock,
-    // false면 아래 "Redis 장애 폴백"과 똑같은 DB 경로를 강제로 탄다 — A/B 측정과 장애 시나리오의 변수. 경위: docs/기록.md
-    @Value("\${ranking.redis.enabled:true}") private val redisRankingEnabled: Boolean = true,
 ) {
-    fun getTop30(): List<RankEntry> {
-        if (!redisRankingEnabled) return getTop30FromDb()
+    // 정렬·LIMIT 은 idx_rank(score_month, score DESC) 가 그대로 처리한다.
+    // 동순위 계산만 앱에서 한다 — SQL 의 DENSE_RANK 는 전체 집계를 필요로 하는데,
+    // 여기서는 이미 집계된 30행만 있으면 된다.
+    fun getTop30(): List<RankEntry> =
+        userMonthlyScoreRepository.findTop(scoreMonth(), Limit.of(TOP_N))
+            .map { it.userId to it.score.toLong() }
+            .toDenseRankEntries()
 
-        return try {
-            val entries = rankingRedisRepository.getTop30(YearMonth.now(clock))
-            // Redis가 비어있으면 (초기 기동 등) DB에서 폴백
-            if (entries.isNotEmpty()) entries else getTop30FromDb()
-        } catch (e: DataAccessException) {
-            // Redis 장애(연결 끊김, 타임아웃 등) 시 DB 폴백 — 성능 저하 감수, 가용성 우선
-            // RedisConnectionFailureException만 잡던 이전 버전은 QueryTimeoutException 같은
-            // 타임아웃 계열을 못 잡아 그대로 500이 나갔다. 둘 다 DataAccessException의 하위 타입.
-            getTop30FromDb()
-        }
-    }
-
+    /**
+     * dense rank = 나보다 높은 점수의 "종류" 수 + 1.
+     *
+     * 한 쿼리로 묶지 않고 두 단계로 나눈다 — null 의 의미를 구분하기 위해서다.
+     * 행이 없으면(= 랭킹 대상이 아니면) null 이고, 그건 0 등과 다르다.
+     */
     fun getUserRank(userId: Long): Long? {
-        if (!redisRankingEnabled) return getUserRankFromDb(userId)
-
-        val yearMonth = YearMonth.now(clock)
-        return try {
-            rankingRedisRepository.getUserDenseRank(userId, yearMonth)
-            // null 은 "랭킹 미구축"과 "이 유저만 점수 없음" 둘 다라 isEmpty 로 가른다 — RankPathConsistencyTest.
-                ?: if (rankingRedisRepository.isEmpty(yearMonth)) getUserRankFromDb(userId) else null
-        } catch (e: DataAccessException) {
-            getUserRankFromDb(userId)
-        }
+        val scoreMonth = scoreMonth()
+        val myScore = userMonthlyScoreRepository.findScore(userId, scoreMonth) ?: return null
+        // 커밋 0 건인 유저는 랭킹에 없다 (I4). findTop 의 score > 0 과 같은 규칙이다.
+        if (myScore <= 0) return null
+        return userMonthlyScoreRepository.countHigherDistinctScores(scoreMonth, myScore) + 1
     }
 
-    // ── DB 폴백 (Redis 장애 또는 초기 기동 시) ────────────────────────────────
-    //
-    // @Transactional 을 붙이지 않는다 — self-invocation 이라 프록시를 안 거치고, private 은 대상도 아니다.
-    // (JpaRepository 메서드는 자체 트랜잭션이 있어 없어도 안전하다)
+    private fun scoreMonth(): String = YearMonth.now(clock).toScoreMonth()
 
-    private fun getTop30FromDb(): List<RankEntry> {
-        val (thisMonthStart, nextMonthStart, _) = dateRanges()
-        return commitRepository.findTop30Rank(thisMonthStart, nextMonthStart)
-            .map { RankEntry(it.getUserId(), it.getCurrentMonthCount(), it.getRank()) }
-    }
-
-    private fun getUserRankFromDb(userId: Long): Long? {
-        val (thisMonthStart, nextMonthStart, _) = dateRanges()
-        return commitRepository.findUserRank(userId, thisMonthStart, nextMonthStart)?.getRank()
-    }
-
-    private fun dateRanges(): Triple<LocalDateTime, LocalDateTime, LocalDateTime> {
-        val now = LocalDateTime.now(clock)
-        val thisMonthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay()
-        val nextMonthStart = thisMonthStart.plusMonths(1)
-        val prevMonthStart = thisMonthStart.minusMonths(1)
-        return Triple(thisMonthStart, nextMonthStart, prevMonthStart)
+    companion object {
+        private const val TOP_N = 30
     }
 }

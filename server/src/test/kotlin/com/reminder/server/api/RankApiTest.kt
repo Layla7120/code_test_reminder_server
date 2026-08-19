@@ -1,6 +1,7 @@
 package com.reminder.server.api
 
 import com.reminder.server.support.ApiTest
+import com.reminder.server.support.recomputeAllScores
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -25,8 +26,9 @@ import java.time.LocalDateTime
  *
  * fixture 만 SQL 로 넣는다 — POST /commits 가 test 프로파일에 없는 MockGithubClient 를 타기 때문. 검증은 전부 HTTP 응답으로.
  *
- * Redis 는 @BeforeEach 에서 flushDb 되므로 두 엔드포인트 모두 DB 폴백 경로를 탄다.
- * 랭킹 계산이 결정론적으로 도는 상태다.
+ * 랭킹은 user_monthly_score 만 읽는다(Phase 3). givenCommits 가 커밋을 넣은 뒤 점수를
+ * 다시 계산해주는 이유다 — 운영에서 그 일을 하는 CommitService.recompute 를 이 경로가
+ * 안 거치기 때문이다. 경로가 하나뿐이라 결정론적으로 돈다.
  */
 class RankApiTest : ApiTest() {
 
@@ -133,6 +135,8 @@ class RankApiTest : ApiTest() {
                 "sha-$userId-$i-${base.toLocalDate()}",
             )
         }
+        // 커밋만 넣으면 랭킹에 안 잡힌다 — 점수는 commits 에서 파생되는 값이다.
+        jdbc.recomputeAllScores()
     }
 
     private fun rankOfUserIn(body: String, userId: Long): Int =
