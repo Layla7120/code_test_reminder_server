@@ -61,23 +61,14 @@ class CommitService(
         //
         // 비활성 유저는 건너뛴다. 랭킹 쿼리에 active 필터가 없어서, 여기서 행을 쓰면
         // 탈퇴한 유저가 재수집만으로 랭킹에 되살아난다.
+        //
+        // 재계산할 달은 커밋의 실제 날짜 기준이다. YearMonth.now(clock) 을 쓰면 월초에
+        // 지난달 커밋을 수집할 때 엉뚱한 달을 다시 세게 된다.
         if (user.active) {
             dtos.map { YearMonth.from(it.commitDate) }
                 .distinct()
                 .forEach { yearMonth -> recomputeMonthlyScore(userId, yearMonth) }
         }
-
-        // 월별로 나눠 발행 — 버킷은 서버의 "지금"이 아니라 커밋의 실제 날짜 기준.
-        // YearMonth.now(clock)을 쓰면 월초에 지난달 커밋을 수집할 때
-        // 이번달 ZSET에 잘못 가산되어 다음 달까지 정합성이 어긋난다.
-        //
-        // DB 트랜잭션 커밋 후 Redis ZINCRBY 발행 (AFTER_COMMIT, 롤백 시 Redis 미반영)
-        newCommits
-            .groupingBy { YearMonth.from(it.commitDate) }
-            .eachCount()
-            .forEach { (yearMonth, count) ->
-                eventPublisher.publishEvent(CommitsSavedEvent(userId, count, yearMonth))
-            }
 
         return newCommits.size
     }

@@ -1,6 +1,6 @@
 package com.reminder.server.domain.commit
 
-import com.reminder.server.domain.rank.RankingRedisRepository
+import com.reminder.server.domain.rank.toScoreMonth
 import com.reminder.server.domain.user.User
 import com.reminder.server.domain.user.UserRepository
 import com.reminder.server.support.IntegrationTest
@@ -8,14 +8,20 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
 import java.time.YearMonth
 
 /**
  * 증명하는 주장(버그 A):
- *   "같은 커밋 목록을 두 번 수집해도 Redis 랭킹 점수가 두 배로 부풀지 않는다"
+ *   "같은 커밋 목록을 두 번 수집해도 랭킹 점수가 두 배로 부풀지 않는다"
+ *
+ * Redis ZSET 을 보던 테스트였다. 랭킹이 user_monthly_score 로 옮겨가면서(Phase 3~4)
+ * 단언 대상만 바꿨다 — 지키려는 성질은 그대로다.
+ *
+ * 락이 없어지면 이 테스트가 더 중요해진다. 지금까지는 분산 락이 동시 요청을 막아줘서
+ * "락이 가려준 것"인지 "구조가 막는 것"인지 구분되지 않았다. 여기서 검증하는 건 후자다 —
+ * 점수를 절대값으로 다시 세므로 몇 번을 수집해도 같은 값이 나온다.
  *
  * MockGithubClient(load-test 프로필, A-1에서 결정론적으로 고침)를 그대로 쓴다.
  * 같은 githubId/repositoryName은 항상 같은 sha 목록을 돌려주므로,
@@ -29,7 +35,6 @@ class CommitDuplicateFetchTest : IntegrationTest() {
     @Autowired lateinit var commitService: CommitService
     @Autowired lateinit var userRepository: UserRepository
     @Autowired lateinit var jdbcTemplate: JdbcTemplate
-    @Autowired lateinit var redisTemplate: StringRedisTemplate
 
     @Test
     @DisplayName("같은 저장소를 두 번 수집해도 DB 커밋 수와 랭킹 점수가 늘어나지 않는다")
@@ -67,7 +72,7 @@ class CommitDuplicateFetchTest : IntegrationTest() {
             "SELECT COUNT(*) FROM commits WHERE user_id = ?", Int::class.java, userId,
         ) ?: 0
 
-    /** 유저의 커밋을 실제 commit_date 기준 월별로 세고, 각 월의 Redis 점수와 함께 반환한다. */
+    /** 유저의 커밋을 실제 commit_date 기준 월별로 세고, 각 월의 집계 점수와 함께 반환한다. */
     private fun scoresByMonth(userId: Long): Map<YearMonth, Double> {
         val months = jdbcTemplate.queryForList(
             "SELECT DISTINCT YEAR(commit_date) AS y, MONTH(commit_date) AS m FROM commits WHERE user_id = ?",
@@ -75,8 +80,12 @@ class CommitDuplicateFetchTest : IntegrationTest() {
         ).map { YearMonth.of(it["y"] as Int, it["m"] as Int) }
 
         return months.associateWith { yearMonth ->
-            redisTemplate.opsForZSet()
-                .score(RankingRedisRepository.rankKey(yearMonth), userId.toString()) ?: 0.0
+            jdbcTemplate.queryForObject(
+                "SELECT score FROM user_monthly_score WHERE user_id = ? AND score_month = ?",
+                Double::class.java,
+                userId,
+                yearMonth.toScoreMonth(),
+            ) ?: 0.0
         }
     }
 }

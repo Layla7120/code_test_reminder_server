@@ -122,24 +122,7 @@ interface CommitRepository : JpaRepository<Commit, Long> {
     @Query("SELECT c.level AS level, COUNT(c) AS count FROM Commit c WHERE c.user.id = :userId GROUP BY c.level")
     fun findLevelDistribution(@Param("userId") userId: Long): List<LevelCountProjection>
 
-    // 스케줄러 자가 치유용: 특정 월의 유저별 커밋 수 집계
-    @Query("""
-        SELECT c.user.id AS userId, COUNT(c) AS count
-        FROM Commit c
-        WHERE c.commitDate >= :from AND c.commitDate < :to
-        GROUP BY c.user.id
-    """)
-    fun findMonthlyCommitCountPerUser(
-        @Param("from") from: LocalDateTime,
-        @Param("to") to: LocalDateTime,
-    ): List<UserCommitCountProjection>
-
     fun existsBySha(sha: String): Boolean
-}
-
-interface UserCommitCountProjection {
-    fun getUserId(): Long
-    fun getCount(): Long
 }
 
 interface LevelCountProjection {
