@@ -20,9 +20,9 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 docker compose up -d
 ```
 
-스키마는 `infra/init.sql`이 컨테이너 최초 생성 시 자동 적용됩니다.
-**이미 `mysql-data` 볼륨이 있으면 다시 실행되지 않습니다** — 스키마를 바꿨다면
-`docker compose down -v` 후 다시 올려야 합니다.
+스키마는 앱 기동 시 Flyway가 적용합니다 (`src/main/resources/db/migration/`).
+볼륨을 지울 필요가 없습니다 — 새 마이그레이션은 다음 기동 때 자동 적용됩니다.
+(구 `init.sql` 시절 볼륨은 첫 기동에서 baseline으로 흡수됩니다.)
 
 ### 환경 변수
 
@@ -49,8 +49,8 @@ cd server && ./gradlew test        # 74개. Docker만 있으면 됨
 ```
 
 Testcontainers가 실제 MySQL·Redis를 띄우므로 `docker compose`를 따로 켜지 않아도 됩니다.
-운영과 **같은 `infra/init.sql`**을 그대로 물리기 때문에, 엔티티와 스키마가 어긋나면
-서버를 띄우지 않아도 테스트가 잡습니다.
+운영과 **같은 Flyway 마이그레이션 체인**이 빈 컨테이너에 스키마를 만들기 때문에,
+마이그레이션과 엔티티가 어긋나면 서버를 띄우지 않아도 테스트가 잡습니다.
 
 테스트 뒤에 `verifyEndpointCoverage`가 이어 돕니다. 엔드포인트에 HTTP 테스트가 없으면
 빌드가 깨집니다 — 판정 근거는 `build/endpoint-audit.txt`(테스트 실행 중 실제로 라우팅된
@@ -161,14 +161,37 @@ echo $DB_USER $DB_PASSWORD              # 환경 변수 확인
 
 ### `ddl-auto: validate` 오류
 
-엔티티와 `infra/init.sql`이 어긋난 것입니다. 스키마를 고쳤다면 볼륨을 지우고 다시 올려야 합니다.
+엔티티와 Flyway 마이그레이션(`db/migration/`)이 어긋난 것입니다. 엔티티를 바꿨다면
+대응하는 마이그레이션(`V<yyyyMMddHHmmss>__<설명>.sql`)을 추가해야 합니다 —
+적용된 파일을 수정하면 Flyway 체크섬 오류가 납니다.
+
+> `validate`는 **컬럼과 타입만** 검사합니다. UNIQUE 제약과 인덱스는 검증하지 않으므로,
+> 그쪽이 어긋나도 부팅은 정상입니다.
+
+#### 예외: `missing table [user_monthly_score]`
+
+Flyway 도입(785ee3c) **이전에** 만든 볼륨입니다. `baseline-on-migrate`는 기존 스키마를
+"V1과 같다"고 **선언만 하고 V1을 실행하지 않으므로**, 그때 누락된 테이블은 채워지지
+않습니다. Flyway는 과거의 드리프트를 소급해 고치지 못합니다 (`PLAN-db-foundation.md` Phase 0).
+
+개발 데이터라면 볼륨을 지우는 게 가장 깨끗합니다:
 
 ```bash
 docker compose down -v && docker compose up -d
 ```
 
-> `validate`는 **컬럼과 타입만** 검사합니다. UNIQUE 제약과 인덱스는 검증하지 않으므로,
-> 그쪽이 어긋나도 부팅은 정상입니다.
+데이터를 지켜야 한다면 누락된 테이블만 만들고 재기동합니다 (`V1__baseline.sql`에서 발췌):
+
+```sql
+CREATE TABLE user_monthly_score (
+    user_id     BIGINT   NOT NULL,
+    score_month CHAR(6)  NOT NULL,
+    score       INT      NOT NULL,
+    PRIMARY KEY (user_id, score_month),
+    INDEX idx_rank (score_month, score DESC),
+    CONSTRAINT fk_ums_user FOREIGN KEY (user_id) REFERENCES users (user_id)
+);
+```
 
 ### Redis 연결 실패
 

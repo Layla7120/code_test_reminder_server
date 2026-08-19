@@ -31,6 +31,14 @@ dependencies {
 	// Flask 의 flask-smorest 가 하던 API 문서화를 되돌린 것이다 — 신규 도입이 아니라 복구다.
 	// Spring Boot BOM 이 관리하지 않는 서드파티라 버전을 직접 적는다 (3.1.0 부터 Boot 4 지원).
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
+
+	// 스키마의 진실 원천은 src/main/resources/db/migration 이다 (구 infra/init.sql 대체).
+	//
+	// spring-boot-flyway: Boot 4 는 자동설정을 모듈로 쪼갰다. flyway-core 만 넣으면
+	// 클래스패스에는 있는데 마이그레이션이 실행되지 않아 validate 가 "missing table" 로 죽는다.
+	// flyway-mysql: Flyway 10부터 DB별 지원이 별도 모듈. 버전은 둘 다 Boot BOM 이 관리.
+	implementation("org.springframework.boot:spring-boot-flyway")
+	implementation("org.flywaydb:flyway-mysql")
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-redis-test")
@@ -130,12 +138,7 @@ val verifyEndpointCoverage by tasks.registering {
 tasks.withType<Test> {
 	useJUnitPlatform()
 
-	// 테스트 컨테이너가 운영과 "같은" 스키마를 쓰도록 infra/init.sql 경로를 넘긴다.
-	// 복사본을 두면 두 파일이 어긋나므로 원본을 그대로 참조한다.
-	systemProperty(
-		"schema.init.sql",
-		project.rootDir.parentFile.resolve("infra/init.sql").absolutePath,
-	)
+	// 스키마는 운영과 같은 Flyway 마이그레이션 체인이 만든다 — init.sql 마운트가 필요 없어졌다.
 
 	finalizedBy(verifyEndpointCoverage)
 }

@@ -76,6 +76,12 @@ median_ms() {  # 워밍 5회 후 10회 측정, 중앙값
 echo "jar 빌드..."
 ./server/gradlew -p server bootJar --quiet
 
+# 스키마는 Flyway 가 앱 기동 시 만든다 (init.sql 마운트 제거 이후).
+# 새 볼륨이면 시드의 TRUNCATE 가 없는 테이블을 만나므로, 먼저 한 번 띄웠다 내려
+# 마이그레이션만 적용한다.
+echo "스키마 적용(Flyway)..."
+start true "$FAR"; stop
+
 SUMMARY="$OUT/summary.txt"
 printf "%-8s %-6s %10s %10s %11s %8s\n" 유저 조건 "rank(ms)" "user(ms)" "req/s" 실패율 | tee "$SUMMARY"
 

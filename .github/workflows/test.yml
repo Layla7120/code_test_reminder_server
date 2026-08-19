@@ -21,8 +21,8 @@ jobs:
 
       # Testcontainers가 실제 MySQL·Redis를 띄운다.
       # ubuntu-latest 러너에는 Docker가 이미 올라와 있어 별도 서비스 설정이 필요 없다.
-      # 스키마는 infra/init.sql 원본을 그대로 물리므로(build.gradle.kts 의 schema.init.sql),
-      # 엔티티와 스키마가 어긋나면 여기서 잡힌다.
+      # 스키마는 운영과 같은 Flyway 마이그레이션 체인이 만들므로,
+      # 마이그레이션과 엔티티가 어긋나면 여기서 잡힌다.
       - name: Run tests
         working-directory: server
         run: ./gradlew test
