@@ -311,25 +311,21 @@ docker exec -i -e MYSQL_PWD=reminder reminder-mysql \
 
 ### Phase 3 — 읽기 경로 전환
 
-> **⚠️ Phase 3~4 사이의 알려진 한계 — 고치지 않는다**
+> **✅ Phase 3 완료 (2026-08-19, `3603dbc`)**
 >
-> 지금 `UserService.deleteUser` 는 `user_monthly_score` 행만 지우고 Redis ZSET 은 건드리지
-> 않는다. 그래서 **Phase 4 로 Redis 랭킹이 사라지기 전까지 `GET /rank` 가 탈퇴 유저를 계속
-> 보여준다.** 자가 치유 스케줄러도 `findMonthlyCommitCountPerUser` 에 `active` 필터가 없어
-> 매시간 다시 채워 넣는다.
+> 착수 전에 "Phase 3~4 사이에는 Redis 랭킹이 탈퇴 유저를 계속 보여준다"를 알려진 한계로
+> 적어뒀는데, **Phase 3 만으로 해소됐다.** 읽는 쪽이 집계 테이블로 바뀌면서 Redis ZSET 을
+> 아무도 읽지 않게 됐고, 거기 탈퇴 유저가 남아 있어도 응답에 영향이 없다.
+> `UserDeactivationApiTest` 2개("탈퇴한 사용자는 Top30 에서 빠진다", "개인 순위는 null")가
+> 통과한다.
 >
-> `DELETE /users/delete` 는 인증이 없고(`permitAll()`) `userId` 를 파라미터로 받으므로
-> 아무나 아무 유저나 탈퇴시킬 수 있다 — 노출 면적이 좁지 않다.
+> 이벤트 리스너와 자가 치유 스케줄러는 여전히 ZSET 을 채운다 — 읽는 사람이 없을 뿐이다.
+> Phase 4 에서 삭제한다.
 >
-> **그래도 고치지 않는 이유**: Phase 4 가 지울 코드에 버그를 고치는 일이 된다.
-> 데모·시연 전이라면 아래로 비우면 스케줄러가 DB 기준으로 다시 채운다.
->
-> ```bash
-> redis-cli DEL rank:commit:$(date +%Y%m)
-> ```
->
-> Phase 4 완료 시점에 이 블록을 지운다.
-
+> **계획서에서 벗어난 것 하나**: `RankServiceFallbackTest` 와 `RankPathConsistencyTest` 를
+> Phase 4 가 아니라 여기서 처리했다. 두 테스트가 `RankService` 생성자를 직접 호출해서,
+> 생성자가 바뀌는 순간 컴파일이 깨진다 — "각 단계 끝에 초록불" 규칙상 미룰 수 없었다.
+> `RankPathConsistencyTest` 의 단언은 계획서 지시대로 `RankingRulesTest` 로 옮겼다.
 
 - `RankService` 가 `UserMonthlyScoreRepository` 를 쓰도록 교체
 - `redisRankingEnabled` 스위치와 폴백 분기 제거 — **경로가 하나가 되므로 폴백 개념이 사라진다**
