@@ -21,7 +21,6 @@ repositories {
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
@@ -41,14 +40,13 @@ dependencies {
 	implementation("org.flywaydb:flyway-mysql")
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-data-redis-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-	// 테스트는 실제 MySQL·Redis 컨테이너에서 돈다.
-	// H2/임베디드 Redis를 쓰면 검증 대상(InnoDB row lock, Redis Lua 원자성)이 사라진다.
+	// 테스트는 실제 MySQL 컨테이너에서 돈다.
+	// H2 를 쓰면 검증 대상(InnoDB row lock)이 사라진다.
 	// Testcontainers 2.x 는 모듈명이 testcontainers-* 로 바뀌었다 (1.x: junit-jupiter, mysql)
 	// 버전은 Spring Boot 4.0.4 BOM 이 관리한다 (현재 2.0.4)
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")

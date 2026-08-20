@@ -5,8 +5,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.RedisCallback
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
 
@@ -28,18 +26,10 @@ abstract class IntegrationTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
-    @Autowired
-    private lateinit var redisTemplate: StringRedisTemplate
-
     @BeforeEach
     fun clearStores() {
         // FK 때문에 삭제 순서가 중요하다 (자식 → 부모)
         CLEANUP_ORDER.forEach { jdbcTemplate.execute("DELETE FROM $it") }
-
-        redisTemplate.execute(RedisCallback { connection ->
-            connection.serverCommands().flushDb()
-            null
-        })
     }
 
     companion object {

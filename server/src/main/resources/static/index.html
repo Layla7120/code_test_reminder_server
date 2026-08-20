@@ -263,7 +263,7 @@
               <label>User ID</label>
               <input type="number" id="fetch-uid" placeholder="1" value="1">
             </div>
-            <button onclick="fetchCommits()">커밋 수집</button>
+            <button id="fetch-btn" onclick="fetchCommits()">커밋 수집</button>
           </div>
           <label>응답 <span id="status-fetchCommits" class="status-badge status-pending">-</span></label>
           <div class="response-box" id="res-fetchCommits">응답이 여기 표시됩니다...</div>
@@ -681,11 +681,21 @@
     setResult('checkNick', status, data);
   }
 
+  // 연타를 여기서 막는다. 서버는 같은 요청이 여러 번 와도 결과가 같도록(멱등) 되어 있어서
+  // 데이터가 틀어지지는 않지만, GitHub 을 두 번 부를 이유가 없다.
+  // 예전에는 서버가 Redis 분산 락으로 막고 400 을 돌려줬다 — 못 누르게 하는 편이 낫다.
   async function fetchCommits() {
     const userId = requireNum('fetch-uid', 'fetchCommits', 'User ID');
     if (userId === null) return;
-    const { status, data } = await req('POST', '/commits', { userId });
-    setResult('fetchCommits', status, data);
+
+    const btn = document.getElementById('fetch-btn');
+    btn.disabled = true;
+    try {
+      const { status, data } = await req('POST', '/commits', { userId });
+      setResult('fetchCommits', status, data);
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   async function getGrass() {

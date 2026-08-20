@@ -3,14 +3,10 @@ package com.reminder.server.domain.commit
 import com.reminder.server.domain.rank.UserMonthlyScoreRepository
 import com.reminder.server.domain.rank.toScoreMonth
 import com.reminder.server.domain.user.UserRepository
-import com.reminder.server.global.exception.CommitFetchAlreadyInProgressException
 import com.reminder.server.global.exception.UserNotFoundException
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
@@ -22,8 +18,6 @@ class CommitService(
     private val userRepository: UserRepository,
     private val userMonthlyScoreRepository: UserMonthlyScoreRepository,
     private val githubClient: GithubClientPort,
-    private val redisTemplate: StringRedisTemplate,
-    private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
 ) {
     // ── 커밋 동기화 ───────────────────────────────────────────────────────────
@@ -33,16 +27,15 @@ class CommitService(
         val user = userRepository.findById(userId)
             .orElseThrow { UserNotFoundException(userId) }
 
-        // 동일 유저의 중복 페칭 요청을 Application 레벨에서 차단 (멱등성)
-        // SETNX 원자적 연산 → 분산 서버 환경에서도 안전
-        val lockKey = "commit:fetch:lock:$userId"
-        val acquired = redisTemplate.opsForValue()
-            .setIfAbsent(lockKey, "1", Duration.ofSeconds(30))
-        if (acquired != true) throw CommitFetchAlreadyInProgressException()
-
-        // 락 해제를 트랜잭션 완료까지 미룬다. try/finally 로 여기서 지우면 커밋 전에 풀려,
-        // 그 틈의 두 번째 요청이 findExistingShas() 를 비어 있다고 보고 버그 A 를 재발시킨다.
-        eventPublisher.publishEvent(CommitFetchLockReleaseEvent(lockKey))
+        // 중복 수집을 락으로 막지 않는다. 이 연산이 멱등이기 때문이다 —
+        // 커밋 삽입은 UNIQUE(sha) + ON DUPLICATE KEY UPDATE 이고 점수는 절대값 재계산이라,
+        // 같은 요청이 몇 번을 동시에 와도 결과가 같다.
+        //
+        // 있던 Redis 분산 락을 뺀 이유: 그 락은 정합성을 지키려 있었는데(버그 A), TTL 기반
+        // 락은 원래 그 보장을 못 한다. GitHub 응답이 TTL 을 넘기면 만료된 락으로 계속 돌고,
+        // 값에 소유자 표시가 없어 해제 시 남의 락을 지운다. 막으려면 소유자 토큰 + Lua +
+        // TTL 연장 + 펜싱 토큰까지 가야 한다. 정합성을 락에 기대지 않는 쪽이 낫다.
+        // 경위: PLAN-aggregate-table.md Phase 4 주석
 
         val rawCommits = githubClient.fetchCommits(user.githubId, user.repositoryName)
         val dtos = rawCommits.map { it.copy(userId = userId) }

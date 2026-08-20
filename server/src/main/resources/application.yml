@@ -31,16 +31,6 @@ spring:
     # 빈 DB 에는 V1 부터 전부 적용한다.
     baseline-on-migrate: true
 
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-
-  cache:
-    type: redis
-    redis:
-      time-to-live: 60000         # 60초 (Flask CACHE_TIMEOUT 동일)
-
 server:
   port: ${PORT:8080}
 

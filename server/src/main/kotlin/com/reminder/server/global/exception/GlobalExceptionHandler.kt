@@ -22,7 +22,6 @@ class GlobalExceptionHandler {
         AlreadyInGroupException::class,
         NotGroupMemberException::class,
         NotGroupOwnerException::class,
-        CommitFetchAlreadyInProgressException::class,
         IllegalArgumentException::class,
     )
     fun handleBadRequest(e: RuntimeException) =
