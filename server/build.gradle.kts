@@ -31,11 +31,7 @@ dependencies {
 	// Spring Boot BOM 이 관리하지 않는 서드파티라 버전을 직접 적는다 (3.1.0 부터 Boot 4 지원).
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 
-	// 스키마의 진실 원천은 src/main/resources/db/migration 이다 (구 infra/init.sql 대체).
-	//
-	// spring-boot-flyway: Boot 4 는 자동설정을 모듈로 쪼갰다. flyway-core 만 넣으면
-	// 클래스패스에는 있는데 마이그레이션이 실행되지 않아 validate 가 "missing table" 로 죽는다.
-	// flyway-mysql: Flyway 10부터 DB별 지원이 별도 모듈. 버전은 둘 다 Boot BOM 이 관리.
+	// flyway-core 로 바꾸지 말 것 — Boot 4 는 자동설정이 별도 모듈이라 마이그레이션이 안 돈다.
 	implementation("org.springframework.boot:spring-boot-flyway")
 	implementation("org.flywaydb:flyway-mysql")
 	runtimeOnly("com.mysql:mysql-connector-j")
@@ -89,9 +85,7 @@ val verifyEndpointCoverage by tasks.registering {
 			return@doLast
 		}
 
-		// 식별자 자체가 '#' 를 포함한다(Controller#method). 그래서 '#' 를 인라인 주석
-		// 구분자로 쓰면 안 된다 — substringBefore('#') 는 이름을 통째로 잘라먹는다.
-		// 줄 전체가 주석인 경우만 걸러내고, 식별자는 첫 공백까지로 끊는다.
+		// substringBefore('#') 로 바꾸지 말 것 — 식별자가 '#' 를 포함한다(Controller#method).
 		val allowFile = file("src/test/resources/endpoint-allowlist.txt")
 		val allowed = if (allowFile.exists()) {
 			allowFile.readLines()
