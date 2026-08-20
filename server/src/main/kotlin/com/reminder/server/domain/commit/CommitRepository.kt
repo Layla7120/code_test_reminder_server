@@ -23,7 +23,7 @@ interface CommitRepository : JpaRepository<Commit, Long> {
     // 안 쓰는 컬럼을 빼면 GROUP BY 키가 좁아진다 (10만 유저 4,882→531ms). 경위: docs/기록.md
     //
     // [LEFT JOIN → JOIN]
-    // 커밋이 0건인 유저는 Top 30에 들어갈 수 없다. 또한 Redis 경로(ZSET)도 점수가 있는
+    // 커밋이 0건인 유저는 Top 30에 들어갈 수 없다. 집계 테이블도 점수가 있는
     // 유저만 담으므로, INNER JOIN이 두 경로의 결과를 일치시킨다.
     @Query("""
         SELECT

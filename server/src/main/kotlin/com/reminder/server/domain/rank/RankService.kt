@@ -8,8 +8,8 @@ import java.time.YearMonth
 /**
  * 랭킹 조회. 진실 원천은 user_monthly_score 하나다.
  *
- * 경로가 하나라 폴백이라는 개념이 없다 — Redis 장애 분기도, ranking.redis.enabled 스위치도
- * 없다. 둘 다 "경로가 둘"이라서 필요했던 것이고, 그 둘이 어긋나 있던 게 51abeb7 이었다.
+ * 경로가 하나라 폴백이라는 개념이 없다. 폴백은 "경로가 둘"이라서 필요했던 것이고,
+ * 그 둘이 어긋나 있던 게 51abeb7 이었다.
  *
  * @Transactional 을 붙이지 않는다 — JpaRepository 메서드는 자체 트랜잭션이 있다.
  */

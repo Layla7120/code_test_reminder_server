@@ -16,7 +16,7 @@
 brew install openjdk@21
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 
-# MySQL + Redis (저장소 루트에서)
+# MySQL (저장소 루트에서)
 docker compose up -d
 ```
 
@@ -31,8 +31,8 @@ export DB_USER=reminder DB_PASSWORD=reminder DB_NAME=reminder
 export GITHUB_TOKEN=ghp_...        # GitHub API 호출용
 ```
 
-기본값이 있어 로컬에서는 `DB_HOST`(localhost) / `DB_PORT`(3306) /
-`REDIS_HOST`(localhost) / `REDIS_PORT`(6379) / `PORT`(8080)는 생략할 수 있습니다.
+기본값이 있어 로컬에서는 `DB_HOST`(localhost) / `DB_PORT`(3306) / `PORT`(8080)는
+생략할 수 있습니다.
 
 ### 기동
 
@@ -45,10 +45,10 @@ cd server && ./gradlew bootRun
 ### 테스트
 
 ```bash
-cd server && ./gradlew test        # 74개. Docker만 있으면 됨
+cd server && ./gradlew test        # 81개. Docker만 있으면 됨
 ```
 
-Testcontainers가 실제 MySQL·Redis를 띄우므로 `docker compose`를 따로 켜지 않아도 됩니다.
+Testcontainers가 실제 MySQL을 띄우므로 `docker compose`를 따로 켜지 않아도 됩니다.
 운영과 **같은 Flyway 마이그레이션 체인**이 빈 컨테이너에 스키마를 만들기 때문에,
 마이그레이션과 엔티티가 어긋나면 서버를 띄우지 않아도 테스트가 잡습니다.
 
@@ -126,7 +126,7 @@ Testcontainers가 실제 MySQL·Redis를 띄우므로 `docker compose`를 따로
 domain/
   commit/    커밋 수집·조회. GithubClientPort 로 외부 API 추상화
   group/     그룹 생성·참여·탈퇴
-  rank/      랭킹. Redis 경로 + DB 폴백
+  rank/      랭킹. user_monthly_score 집계 테이블 단일 경로
   user/      유저
   history/   풀이 기록
 global/
@@ -139,10 +139,8 @@ global/
 
 ### 설정 스위치
 
-| 프로퍼티 | 기본값 | 용도 |
-|---|---|---|
-| `ranking.redis.enabled` | `true` | `false`면 Redis를 건너뛰고 DB 경로로. A/B 측정과 장애 재현용 |
-| `ranking.sync.cron` | `0 0 * * * *` | 자가 치유 스케줄러 주기 |
+랭킹 관련 스위치(`ranking.redis.enabled`, `ranking.sync.cron`)는 없어졌습니다 —
+Redis 랭킹 경로를 걷어내면서 함께 사라졌습니다.
 
 프로파일 `load-test`를 켜면 `GithubClient` 대신 `MockGithubClient`가 주입됩니다
 (GitHub API 없이 수집 경로를 통과시킴).
@@ -170,7 +168,7 @@ echo $DB_USER $DB_PASSWORD              # 환경 변수 확인
 
 #### 예외: `missing table [user_monthly_score]`
 
-Flyway 도입(785ee3c) **이전에** 만든 볼륨입니다. `baseline-on-migrate`는 기존 스키마를
+집계 테이블 추가(785ee3c) **이전에** 만든 볼륨입니다. `baseline-on-migrate`는 기존 스키마를
 "V1과 같다"고 **선언만 하고 V1을 실행하지 않으므로**, 그때 누락된 테이블은 채워지지
 않습니다. Flyway는 과거의 드리프트를 소급해 고치지 못합니다 (`PLAN-db-foundation.md` Phase 0).
 
@@ -193,20 +191,18 @@ CREATE TABLE user_monthly_score (
 );
 ```
 
-### Redis 연결 실패
-
-```bash
-docker exec -i reminder-redis redis-cli ping     # PONG
-```
-
 ### `/rank`가 빈 배열
 
-Redis가 비어 있으면 `getTop30()`이 **에러 없이** DB 폴백을 탑니다.
-그래도 빈 배열이면 이번 달 커밋 데이터가 없는 것입니다.
+랭킹은 `user_monthly_score` 만 읽습니다. `commits` 에 행이 있어도 이 테이블이 비어 있으면
+빈 배열이 나갑니다 — 점수는 커밋 수집 시점에 파생되기 때문입니다.
 
-```bash
-docker exec -i reminder-redis redis-cli ZCARD rank:commit:$(TZ=Asia/Seoul date +%Y%m)
+```sql
+SELECT * FROM user_monthly_score WHERE score_month = DATE_FORMAT(NOW(), '%Y%m');
 ```
+
+비어 있다면 이번 달 커밋이 없거나, 수집 경로(`POST /commits`)를 안 탄 데이터입니다.
+SQL 로 직접 넣은 커밋은 점수가 자동으로 생기지 않습니다 —
+`V20260819212939__backfill_user_monthly_score.sql` 의 SQL 을 다시 돌리면 채워집니다.
 
 ### Java 버전 오류
 

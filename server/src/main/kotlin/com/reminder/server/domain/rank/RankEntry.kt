@@ -6,8 +6,7 @@ data class RankEntry(
     val rank: Long,
 )
 
-// Redis ZSET에서 꺼낸 원본 데이터를 Dense Rank로 가공
-// ZREVRANK는 인덱스(0-based)를 반환할 뿐 — 동점자 처리 없음
+// (userId, score) 목록을 Dense Rank로 가공
 // Dense Rank 규칙: 동점자는 같은 순위, 다음 순위는 연속 (1, 1, 2 — 1, 1, 3 아님)
 //
 // 동점 순서는 userId 오름차순으로 두 경로에서 같게 — RankPathConsistencyTest 가 고정한다.

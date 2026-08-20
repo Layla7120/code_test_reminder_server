@@ -16,10 +16,7 @@ GitHub 저장소의 백준 풀이 커밋을 모아 **월별 랭킹**을 매기�
 flowchart LR
     Client["웹 데모 · API 클라이언트"] --> API["Spring Boot<br/>Controller · Service"]
     API -->|커밋 수집| GitHub["GitHub API"]
-    API -->|영속 데이터| MySQL[("MySQL<br/>commits · groups · scores")]
-    API -->|"랭킹 (토글 가능, 실패 시 DB 폴백)"| Redis[("Redis<br/>ZSET 랭킹")]
-    Scheduler["매시간 스케줄러"] -->|"Redis = DB 자가치유"| Redis
-    Scheduler --> MySQL
+    API -->|"영속 데이터 · 랭킹"| MySQL[("MySQL<br/>commits · groups<br/>user_monthly_score")]
 ```
 
 ## 구조
@@ -49,7 +46,7 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
 cd server && ./gradlew test
 ```
 
-Testcontainers가 실제 MySQL·Redis를 띄운다 (**74개 통과**). 이어서 `verifyEndpointCoverage`가
+Testcontainers가 실제 MySQL을 띄운다 (**81개 통과**). 이어서 `verifyEndpointCoverage`가
 HTTP 테스트 없는 엔드포인트를 찾으면 빌드를 깬다. push·PR마다 GitHub Actions에서도 같은 명령이 돈다.
 
 > `openjdk@21`이 PATH에 없으면(Homebrew keg-only) JAVA_HOME을 직접 지정:
@@ -58,7 +55,7 @@ HTTP 테스트 없는 엔드포인트를 찾으면 빌드를 깬다. push·PR마
 **서버**:
 
 ```bash
-docker compose up -d          # MySQL + Redis
+docker compose up -d          # MySQL (스키마는 기동 시 Flyway 가 만든다)
 export DB_USER=reminder DB_PASSWORD=reminder DB_NAME=reminder GITHUB_TOKEN=...
 cd server && ./gradlew bootRun    # http://localhost:8080 (웹 데모 포함)
 ```
@@ -72,8 +69,9 @@ cd server && ./gradlew bootRun    # http://localhost:8080 (웹 데모 포함)
 | 언어       | Python 3.11                   | Kotlin (JDK 21)           |
 | 프레임워크 | Flask 3.1 + Smorest           | Spring Boot 4.0           |
 | ORM        | SQLAlchemy 2.0                | Spring Data JPA           |
-| 캐싱       | Flask-Caching (프로세스 로컬) | Redis                     |
-| 테스트     | 없음                          | Testcontainers, 74개      |
+| 랭킹       | 매 요청 집계                  | 집계 테이블(user_monthly_score) |
+| 마이그레이션 | Alembic                     | Flyway                    |
+| 테스트     | 없음                          | Testcontainers, 81개      |
 
 ## 주요 API
 
