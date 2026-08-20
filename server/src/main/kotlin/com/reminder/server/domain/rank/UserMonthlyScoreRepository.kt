@@ -71,16 +71,19 @@ interface UserMonthlyScoreRepository : JpaRepository<UserMonthlyScore, UserMonth
      * recompute 는 달 하나를 받지만 여기서는 어느 달에 커밋이 있는지 모른다 —
      * 커밋이 있는 달만 GROUP BY 로 뽑아 한 번에 채운다.
      * 백필 마이그레이션(V20260819212939)과 같은 SQL 을 유저 하나로 좁힌 것이다.
+     *
+     * CONVERT_TZ 로 KST 월을 뽑는다 — commit_date 는 UTC 라 그냥 DATE_FORMAT 하면
+     * 매월 1일 새벽(KST) 커밋이 지난달로 들어간다. 경위: global/ServiceZone
      */
     @Transactional
     @Modifying(flushAutomatically = true)
     @Query(
         value = """
         INSERT INTO user_monthly_score (user_id, score_month, score)
-        SELECT user_id, DATE_FORMAT(commit_date, '%Y%m'), COUNT(*)
+        SELECT user_id, DATE_FORMAT(CONVERT_TZ(commit_date, '+00:00', '+09:00'), '%Y%m'), COUNT(*)
         FROM commits
         WHERE user_id = :userId
-        GROUP BY user_id, DATE_FORMAT(commit_date, '%Y%m')
+        GROUP BY user_id, DATE_FORMAT(CONVERT_TZ(commit_date, '+00:00', '+09:00'), '%Y%m')
         ON DUPLICATE KEY UPDATE score = VALUES(score)
         """,
         nativeQuery = true,

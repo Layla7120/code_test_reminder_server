@@ -3,6 +3,7 @@ package com.reminder.server.domain.commit
 import com.reminder.server.domain.rank.UserMonthlyScoreRepository
 import com.reminder.server.domain.rank.toScoreMonth
 import com.reminder.server.domain.user.UserRepository
+import com.reminder.server.global.ServiceZone
 import com.reminder.server.global.exception.UserNotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -58,7 +59,7 @@ class CommitService(
         // 재계산할 달은 커밋의 실제 날짜 기준이다. YearMonth.now(clock) 을 쓰면 월초에
         // 지난달 커밋을 수집할 때 엉뚱한 달을 다시 세게 된다.
         if (user.active) {
-            dtos.map { YearMonth.from(it.commitDate) }
+            dtos.map { ServiceZone.toKstMonth(it.commitDate) }
                 .distinct()
                 .forEach { yearMonth -> recomputeMonthlyScore(userId, yearMonth) }
         }
@@ -66,10 +67,13 @@ class CommitService(
         return newCommits.size
     }
 
+    // 경계는 KST 로 잡고 UTC 로 바꿔서 넘긴다 — commit_date 가 UTC 이기 때문이다.
     private fun recomputeMonthlyScore(userId: Long, yearMonth: YearMonth) {
-        val monthStart = yearMonth.atDay(1).atStartOfDay()
         userMonthlyScoreRepository.recompute(
-            userId, yearMonth.toScoreMonth(), monthStart, monthStart.plusMonths(1),
+            userId,
+            yearMonth.toScoreMonth(),
+            ServiceZone.startOfMonthUtc(yearMonth),
+            ServiceZone.startOfMonthUtc(yearMonth.plusMonths(1)),
         )
     }
 
@@ -77,12 +81,14 @@ class CommitService(
 
     @Transactional(readOnly = true)
     fun getWeeklyActivity(userId: Long): List<LocalDate> {
-        val now = LocalDateTime.now(clock)
-        val from = now.minusDays(6).toLocalDate().atStartOfDay()
-        val to = now.toLocalDate().atStartOfDay().plusDays(1)
+        val today = ServiceZone.today(clock)
 
-        return commitRepository.findCommitSummariesByUserAndDateRange(userId, from, to)
-            .map { it.getCommitDate().toLocalDate() }
+        return commitRepository.findCommitSummariesByUserAndDateRange(
+            userId,
+            ServiceZone.startOfDayUtc(today.minusDays(6)),
+            ServiceZone.startOfDayUtc(today.plusDays(1)),
+        )
+            .map { ServiceZone.toKstDate(it.getCommitDate()) }
             .distinct()
             .sorted()
     }
@@ -90,24 +96,25 @@ class CommitService(
     // 이번달 + 저번달 잔디 데이터
     @Transactional(readOnly = true)
     fun getCommitGrass(userId: Long): Map<String, Map<LocalDate, Long>> {
-        val now = LocalDateTime.now(clock)
-        val thisMonthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay()
-        val prevMonthStart = thisMonthStart.minusMonths(1)
+        val thisMonth = ServiceZone.currentMonth(clock)
+        val prevMonth = thisMonth.minusMonths(1)
 
-        val thisMonth = commitRepository
-            .findCommitSummariesByUserAndDateRange(userId, thisMonthStart, thisMonthStart.plusMonths(1))
-            .groupingBy { it.getCommitDate().toLocalDate() }
-            .eachCount()
-            .mapValues { it.value.toLong() }
-
-        val prevMonth = commitRepository
-            .findCommitSummariesByUserAndDateRange(userId, prevMonthStart, thisMonthStart)
-            .groupingBy { it.getCommitDate().toLocalDate() }
-            .eachCount()
-            .mapValues { it.value.toLong() }
-
-        return mapOf("thisMonth" to thisMonth, "prevMonth" to prevMonth)
+        return mapOf(
+            "thisMonth" to countByKstDate(userId, thisMonth),
+            "prevMonth" to countByKstDate(userId, prevMonth),
+        )
     }
+
+    // 조회 범위는 UTC 로, 묶는 키는 KST 날짜로. 둘을 섞으면 새벽 커밋이 하루 전 칸에 찍힌다.
+    private fun countByKstDate(userId: Long, month: YearMonth): Map<LocalDate, Long> =
+        commitRepository.findCommitSummariesByUserAndDateRange(
+            userId,
+            ServiceZone.startOfMonthUtc(month),
+            ServiceZone.startOfMonthUtc(month.plusMonths(1)),
+        )
+            .groupingBy { ServiceZone.toKstDate(it.getCommitDate()) }
+            .eachCount()
+            .mapValues { it.value.toLong() }
 
     @Transactional(readOnly = true)
     fun getLevelDistribution(userId: Long): Map<String, Long> =

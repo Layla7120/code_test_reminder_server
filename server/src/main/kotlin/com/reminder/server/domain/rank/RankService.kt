@@ -1,9 +1,9 @@
 package com.reminder.server.domain.rank
 
+import com.reminder.server.global.ServiceZone
 import org.springframework.data.domain.Limit
 import org.springframework.stereotype.Service
 import java.time.Clock
-import java.time.YearMonth
 
 /**
  * 랭킹 조회. 진실 원천은 user_monthly_score 하나다.
@@ -40,7 +40,8 @@ class RankService(
         return userMonthlyScoreRepository.countHigherDistinctScores(scoreMonth, myScore) + 1
     }
 
-    private fun scoreMonth(): String = YearMonth.now(clock).toScoreMonth()
+    // KST 기준 이번 달. 쓰는 쪽(CommitService.recomputeMonthlyScore)과 같은 기준이어야 한다.
+    private fun scoreMonth(): String = ServiceZone.currentMonth(clock).toScoreMonth()
 
     companion object {
         private const val TOP_N = 30

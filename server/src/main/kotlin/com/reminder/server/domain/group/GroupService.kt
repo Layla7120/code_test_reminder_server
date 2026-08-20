@@ -3,6 +3,7 @@ package com.reminder.server.domain.group
 import com.reminder.server.domain.commit.CommitRepository
 import com.reminder.server.domain.commit.MemberCommitProjection
 import com.reminder.server.domain.user.UserRepository
+import com.reminder.server.global.ServiceZone
 import com.reminder.server.global.exception.*
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
@@ -138,10 +139,14 @@ class GroupService(
     fun isGroupNameAvailable(groupName: String): Boolean =
         !groupRepository.existsByGroupName(groupName.trim())
 
+    // KST 로 달을 잡고 UTC 로 바꿔서 넘긴다 — commit_date 가 UTC 다. 경위: global/ServiceZone
     private fun dateRanges(): Triple<LocalDateTime, LocalDateTime, LocalDateTime> {
-        val now = LocalDateTime.now(clock)
-        val thisMonthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay()
-        return Triple(thisMonthStart, thisMonthStart.plusMonths(1), thisMonthStart.minusMonths(1))
+        val thisMonth = ServiceZone.currentMonth(clock)
+        return Triple(
+            ServiceZone.startOfMonthUtc(thisMonth),
+            ServiceZone.startOfMonthUtc(thisMonth.plusMonths(1)),
+            ServiceZone.startOfMonthUtc(thisMonth.minusMonths(1)),
+        )
     }
 }
 
