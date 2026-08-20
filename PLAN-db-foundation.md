@@ -228,6 +228,31 @@ aggregate-table 계획서의 범위가 아니다. Phase 5(DDL 불변조건)에�
 
 ### Phase 2 — 키 교정 (첫 타임스탬프 마이그레이션)
 
+> **🟡 절반 완료 (2026-08-20, `4ee76dc`)**
+>
+> `uk_commits_sha` → `UNIQUE(user_id, sha)` 완료. 빨간불을 먼저 확인했다 —
+> 두 유저가 같은 sha 를 올리면 두 번째가 `expected: 1 but was: 0` 으로 사라졌다.
+> `findExistingShas` 도 `userId` 로 좁혔다. 코너 케이스 4개를 `CommitShaScopeTest` 로 고정.
+>
+> **남은 것: `github_numeric_id`.** 아래 이유로 결정이 필요해 착수하지 않았다.
+>
+> 이건 컬럼 추가만으로 끝나지 않는다. GitHub 의 숫자 id 는 `GET /users/{login}` 을
+> 불러야 얻는데, 그 호출을 어디에 둘지가 트레이드오프다:
+>
+> | 위치 | 얻는 것 | 잃는 것 |
+> |---|---|---|
+> | `loginOrCreate` (로그인마다) | 즉시 정확한 조회 | 로그인 지연 + GitHub 장애 시 로그인 불가 |
+> | `fetchAndSaveCommits` (수집 시 기회주의적) | 로그인 경로 무영향 | 수집 전 유저는 NULL, 조회는 당분간 login 기준 |
+> | 별도 백필 배치 | 일회성 | 배치를 새로 만들어야 함 |
+>
+> 권장은 두 번째다 — 이미 GitHub 을 부르는 자리이고, `785ee3c` 가 썼던 "컬럼을 먼저
+> 넣고 나중에 읽는" 단계적 방식과 같다. 다만 조회 기준을 언제 login → 숫자 id 로
+> 넘길지는 커버리지를 보고 정해야 한다.
+>
+> 지금 상태의 위험: 유저가 GitHub 계정명을 바꾸면 이력이 끊기고, 버려진 login 을 남이
+> 선점하면 **남의 커밋 이력을 상속한다.** 후자가 더 나쁘다.
+
+
 - `uk_commits_sha` → `UNIQUE (user_id, sha)` + `findExistingShas` 에 user_id 조건.
   현재는 포크 저장소의 동일 SHA 커밋이 두 번째 유저에게서 **조용히 유실**된다
 - `users.github_numeric_id BIGINT UNIQUE` 추가 (GitHub API 의 불변 숫자 id),

@@ -41,7 +41,7 @@ erDiagram
         bigint commit_id PK
         bigint user_id FK
         datetime commit_date "idx_commit_date"
-        varchar sha UK
+        varchar sha "UNIQUE(user_id, sha) — 포크는 유저끼리 같은 sha 를 갖는다"
         varchar level "BRONZE~RUBY, UNRATED"
     }
     groups {
@@ -57,7 +57,7 @@ erDiagram
         bigint user_id FK
     }
     user_monthly_score {
-        bigint user_id PK_FK
+        bigint user_id PK "FK → users"
         char score_month PK "yyyyMM"
         int score "commits 에서 파생"
     }
