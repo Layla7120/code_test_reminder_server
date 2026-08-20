@@ -95,6 +95,27 @@ class UserLifecycleApiTest : ApiTest() {
     }
 
     @Test
+    @DisplayName("재가입해도 그룹은 복구되지 않는다 — 다시 참여해야 한다")
+    fun rejoiningDoesNotRestoreGroupMembership() {
+        val owner = createUser("life-owner5")
+        val leaving = createUser("life-leaving5")
+
+        val groupId = post("/group", """{"userId":$owner,"groupName":"life-g5","password":null,"maxCount":5}""")
+            .longField("groupId")
+        post("/group/member", """{"userId":$leaving,"groupId":$groupId,"password":null}""")
+
+        delete("/users/delete?userId=$leaving")
+        post("/users", """{"githubId":"life-leaving5","nickname":"life-leaving5","repositoryName":"repo"}""")
+
+        // 그룹은 다른 사람들과의 관계라 한쪽 의사만으로 되돌릴 수 없다 — docs/삭제-명세.md §3
+        assertThat(get("/group/info?userId=$leaving").body?.trim())
+            .describedAs("모르는 사이에 사람이 돌아와 있으면 남은 멤버 입장에서 곤란하다")
+            .isEqualTo("[]")
+        assertThat(get("/group/info?userId=$owner").body)
+            .doesNotContain("\"userId\":$leaving")
+    }
+
+    @Test
     @DisplayName("탈퇴한 사용자가 다시 로그인하면 계정이 되살아난다")
     fun rejoiningReactivatesTheAccount() {
         val userId = createUser("life-rejoin")
