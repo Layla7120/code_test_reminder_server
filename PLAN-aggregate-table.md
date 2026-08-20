@@ -340,6 +340,30 @@ docker exec -i -e MYSQL_PWD=reminder reminder-mysql \
 
 ### Phase 4 — Redis 랭킹 제거
 
+> **✅ 완료 (2026-08-20, `5802d28` + `1ee4bad` + `c956d14`)**
+>
+> 계획서 지시대로 파일 4개와 테스트 2개를 지웠다. 함께 죽은 것도 정리했다 —
+> `@EnableScheduling`(@Scheduled 가 그 스케줄러 하나뿐이었다),
+> `findMonthlyCommitCountPerUser` + `UserCommitCountProjection`(스케줄러 전용 쿼리).
+>
+> **계획서를 넘어선 것: 락과 Redis 를 통째로 제거했다** (`1ee4bad`).
+> 원래 §0-2 는 "Redis 의존성을 지우지 않는다 — 커밋 수집 락이 쓴다"였는데, 그 락을
+> 없애기로 하면서(위 재검토 메모) 근거가 사라졌다. 의존성·컨테이너·docker-compose
+> 서비스·`spring.cache` 설정까지 전부 걷어냈다. **애플리케이션에 Redis 가 없다.**
+>
+> API 계약이 바뀌었다 — 중복 수집이 400 대신 200 을 받는다. `CommitFetchApiTest` 를
+> 신설해 새 계약을 고정하고, `endpoint-allowlist.txt` 의
+> `CommitController#fetchAndSave` 부채를 지웠다(미도달 7 → 6개).
+> 연타 방지는 데모 페이지 버튼 비활성화로 옮겼다.
+>
+> 검증: 81개 통과. 테스트 실행 75초 → 46초.
+>
+> **관측된 flake**: Phase 4 중 전체 실행 3회 중 1회 `CommitDuplicateFetchTest` 가
+> Redis 연결 실패로 깨졌다(단독 실행은 통과). Redis 를 걷어낸 뒤로는 재발하지 않았다.
+> 다만 근본 원인은 남아 있을 수 있다 — 컨테이너가 Spring 컨텍스트마다 `@Bean` 으로
+> 생성돼, 컨텍스트가 늘면 MySQL 컨테이너도 같이 늘어난다(측정 시 5개). 아래 참고.
+
+
 삭제:
 ```
 domain/rank/RankingRedisRepository.kt
@@ -434,6 +458,21 @@ RankPathConsistencyTest           — 두 경로 일치
 **검증**: `./gradlew test`
 
 ### Phase 5 — 정리
+
+> **✅ 완료 (2026-08-20, `c956d14`)**
+>
+> `endpoint-allowlist.txt` 는 오히려 한 줄 줄었다(7 → 6). 엔드포인트 수는 그대로다.
+> `AGENTS.md` 는 손대지 않았다 — 제안할 것이 생기면 별도로 올린다.
+> 문서·주석을 코드에 맞췄다(README 2개, bench/README, 주석 5개 파일).
+>
+> **남은 것**: §5 의 `bench/query_ab.sh`(SQL 레벨 재측정). 아직 안 했다.
+> 기존 `bench/run.sh`·`rank_ab.js`·`bench/README.md` 에는 기록 문서임을 헤더로 달아뒀다.
+>
+> **후속 후보 (이 계획서 범위 밖)**: 테스트 컨테이너가 Spring 컨텍스트마다 새로 뜬다.
+> `ContainerConfig` 가 `@Bean` 으로 정의해서, 프로필·웹환경 조합이 다른 테스트가
+> 생길 때마다 MySQL 컨테이너가 하나씩 늘어난다. static 싱글턴 컨테이너로 바꾸면
+> 실행 시간이 줄고 위 flake 의 원인도 함께 사라질 가능성이 높다.
+
 
 - `endpoint-allowlist.txt` 확인 — 엔드포인트가 늘거나 줄지 않았으므로 그대로일 것이다.
   달라졌으면 원인을 파악하고 보고한다
