@@ -65,6 +65,28 @@ interface UserMonthlyScoreRepository : JpaRepository<UserMonthlyScore, UserMonth
     )
     fun countHigherDistinctScores(@Param("scoreMonth") scoreMonth: String, @Param("score") score: Int): Long
 
+    /**
+     * 이 유저의 모든 달 점수를 commits 에서 다시 만든다. 재가입 시 쓴다.
+     *
+     * recompute 는 달 하나를 받지만 여기서는 어느 달에 커밋이 있는지 모른다 —
+     * 커밋이 있는 달만 GROUP BY 로 뽑아 한 번에 채운다.
+     * 백필 마이그레이션(V20260819212939)과 같은 SQL 을 유저 하나로 좁힌 것이다.
+     */
+    @Transactional
+    @Modifying(flushAutomatically = true)
+    @Query(
+        value = """
+        INSERT INTO user_monthly_score (user_id, score_month, score)
+        SELECT user_id, DATE_FORMAT(commit_date, '%Y%m'), COUNT(*)
+        FROM commits
+        WHERE user_id = :userId
+        GROUP BY user_id, DATE_FORMAT(commit_date, '%Y%m')
+        ON DUPLICATE KEY UPDATE score = VALUES(score)
+        """,
+        nativeQuery = true,
+    )
+    fun backfillFromCommits(@Param("userId") userId: Long)
+
     // 비활성 유저는 행 자체를 갖지 않는다는 불변조건을 세우는 쪽.
     // 랭킹 쿼리에서 active 필터를 뺄 수 있는 근거가 전부 여기에 있다.
     @Transactional

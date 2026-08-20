@@ -39,4 +39,10 @@ class User(
     fun deactivate() {
         this.active = false
     }
+
+    // 탈퇴한 계정으로 다시 로그인하면 되살린다. 커밋·이력은 지운 적이 없으므로
+    // 점수만 다시 계산하면 탈퇴 전 상태로 돌아온다 — UserService.loginOrCreate 참고.
+    fun reactivate() {
+        this.active = true
+    }
 }
