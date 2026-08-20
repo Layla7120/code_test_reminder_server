@@ -19,14 +19,16 @@ class CommitJdbcRepository(private val jdbcTemplate: JdbcTemplate) {
     // 삽입 전 이미 있는 sha를 조회해 실제 신규 건수를 판별한다.
     // batchUpdate의 반환값(IntArray)은 MySQL rewriteBatchedStatements 환경에서
     // SUCCESS_NO_INFO(-2)로 나와 삽입 건수 집계에 쓸 수 없다.
-    fun findExistingShas(shas: List<String>): Set<String> {
+    //
+    // userId 로 좁힌다 — 빼면 포크 저장소에서 남의 커밋을 내 것으로 보고 신규 건수를 0 으로 만든다.
+    fun findExistingShas(userId: Long, shas: List<String>): Set<String> {
         if (shas.isEmpty()) return emptySet()
 
         val placeholders = shas.joinToString(",") { "?" }
         return jdbcTemplate.query(
-            "SELECT sha FROM commits WHERE sha IN ($placeholders)",
+            "SELECT sha FROM commits WHERE user_id = ? AND sha IN ($placeholders)",
             { rs, _ -> rs.getString("sha") },
-            *shas.toTypedArray(),
+            userId, *shas.toTypedArray(),
         ).toSet()
     }
 

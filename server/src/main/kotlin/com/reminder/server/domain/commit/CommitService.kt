@@ -41,7 +41,7 @@ class CommitService(
         val dtos = rawCommits.map { it.copy(userId = userId) }
 
         // 실제로 새로 저장될 커밋만 랭킹에 반영한다 — 요청 개수를 그대로 더하면 재수집마다 점수가 부푼다 (버그 A). 경위: docs/기록.md
-        val existingShas = commitJdbcRepository.findExistingShas(dtos.map { it.sha })
+        val existingShas = commitJdbcRepository.findExistingShas(userId, dtos.map { it.sha })
         val newCommits = dtos
             .distinctBy { it.sha }  // 같은 fetch 안의 sha 중복 방어 (정상 GitHub 응답에서는 없음)
             .filter { it.sha !in existingShas }

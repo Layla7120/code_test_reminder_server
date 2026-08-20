@@ -19,6 +19,71 @@ flowchart LR
     API -->|"영속 데이터 · 랭킹"| MySQL[("MySQL<br/>commits · groups<br/>user_monthly_score")]
 ```
 
+### 테이블
+
+```mermaid
+erDiagram
+    users ||--o{ commits : "커밋을 남긴다"
+    users ||--o{ history : "풀이를 기록한다"
+    users ||--o{ participate : "그룹에 참여한다"
+    users ||--o{ groups : "소유한다 (owner_id)"
+    users ||--o{ user_monthly_score : "월별 점수를 갖는다"
+    groups ||--o{ participate : "멤버를 갖는다"
+
+    users {
+        bigint user_id PK
+        varchar github_id UK "GitHub login"
+        varchar nickname UK
+        varchar repository_name
+        boolean active "소프트 삭제"
+    }
+    commits {
+        bigint commit_id PK
+        bigint user_id FK
+        datetime commit_date "idx_commit_date"
+        varchar sha UK
+        varchar level "BRONZE~RUBY, UNRATED"
+    }
+    groups {
+        bigint group_id PK
+        bigint owner_id FK
+        varchar group_name UK
+        int member_max_count
+        int member_counter "participate 에서 파생"
+    }
+    participate {
+        bigint participate_id PK
+        bigint group_id FK
+        bigint user_id FK
+    }
+    user_monthly_score {
+        bigint user_id PK_FK
+        char score_month PK "yyyyMM"
+        int score "commits 에서 파생"
+    }
+    history {
+        bigint history_id PK
+        bigint user_id FK
+        varchar problem_num
+        varchar solve_time "HH:MM:SS 문자열"
+    }
+```
+
+**진실 원천과 파생을 구분하는 게 이 스키마를 읽는 핵심이다.**
+
+| 파생 | 원천 | 갱신 방식 |
+|---|---|---|
+| `user_monthly_score.score` | `commits` | 커밋 저장과 **같은 트랜잭션**에서 `COUNT(*)` 절대값으로 덮어쓴다 |
+| `groups.member_counter` | `participate` | 조건부 원자적 `UPDATE` (`WHERE counter < max`) |
+
+절대값이라 몇 번을 다시 계산해도 같은 값이 나온다 — 증분(`+= n`)이 한 번 틀리면 복구가
+안 됐던 문제(`docs/기록.md` ②)를 구조로 없앤 것이다.
+랭킹은 `user_monthly_score` **하나만** 읽는다. 예전에는 Redis ZSET 이 세 번째 사본이었고,
+그 사본들이 어긋나는 게 결함의 출처였다.
+
+`user_monthly_score` 에 **행이 있다 = 랭킹에 포함된다**. 그래서 랭킹 쿼리에 `active` 필터가
+없다 — 탈퇴 시 행을 지워서 읽기 경로에서 조인을 없앴다(5만 행 기준 87ms → 0.5ms).
+
 ## 구조
 
 ```

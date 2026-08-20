@@ -7,7 +7,11 @@ import java.time.LocalDateTime
 @Entity
 @Table(
     name = "commits",
-    indexes = [Index(name = "idx_commit_date", columnList = "commitDate")]
+    indexes = [Index(name = "idx_commit_date", columnList = "commitDate")],
+    uniqueConstraints = [
+        // 유일성 범위는 유저 한 명이다 — 포크 저장소는 유저끼리 같은 sha 를 갖는다.
+        UniqueConstraint(name = "uk_commits_user_sha", columnNames = ["user_id", "sha"])
+    ]
 )
 class Commit(
     // LAZY 강제: EAGER는 N+1의 근원
@@ -29,9 +33,8 @@ class Commit(
     @Column(nullable = false, updatable = false, length = 20)
     val level: CommitLevel,
 
-    // sha: GitHub commit 고유 식별자 → DB 레벨 중복 방어
-    // unique=true가 여기 있다 → 서비스 레이어 로직에 기대지 않음
-    @Column(nullable = false, updatable = false, unique = true, length = 40)
+    // 유일성은 (user_id, sha) 복합 제약이 건다 — 위 @Table 참고
+    @Column(nullable = false, updatable = false, length = 40)
     val sha: String,
 ) {
     @Id
