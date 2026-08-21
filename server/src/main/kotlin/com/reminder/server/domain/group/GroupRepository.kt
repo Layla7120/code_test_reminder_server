@@ -7,8 +7,6 @@ import org.springframework.data.repository.query.Param
 
 interface GroupRepository : JpaRepository<Group, Long> {
 
-    fun findByGroupName(groupName: String): Group?
-
     fun existsByGroupName(groupName: String): Boolean
 
     // 원자적 증가: DB 레벨에서 조건 확인 + 증가를 단일 연산으로 처리

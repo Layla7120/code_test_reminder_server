@@ -49,8 +49,6 @@ class MockGithubClient : GithubClientPort {
         }
     }
 
-    override fun existsRepository(githubId: String, repositoryName: String): Boolean = true
-
     companion object {
         private val DUMMY_PROBLEMS = listOf(
             "두 수의 합", "피보나치 수", "소수 판별", "DFS와 BFS", "최단경로",

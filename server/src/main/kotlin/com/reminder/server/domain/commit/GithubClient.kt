@@ -88,19 +88,6 @@ class GithubClient(
             }
         }
 
-    override fun existsRepository(githubId: String, repositoryName: String): Boolean {
-        return try {
-            restClient.get()
-                .uri("/repos/{owner}/{repo}", githubId, repositoryName)
-                .retrieve()
-                .toBodilessEntity()
-            true
-        } catch (e: RestClientResponseException) {
-            if (e.statusCode == HttpStatus.NOT_FOUND) false
-            else throw GithubApiException("GitHub API 오류: ${e.statusCode}")
-        }
-    }
-
     private fun GithubCommitResponse.toInsertDto(): CommitInsertDto? {
         val match = commitPattern.find(commit.message) ?: return null  // 알고리즘 커밋이 아니면 skip
         val level = CommitLevel.from(match.groupValues[1])

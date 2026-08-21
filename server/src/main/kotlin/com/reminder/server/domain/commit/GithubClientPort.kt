@@ -11,5 +11,4 @@ package com.reminder.server.domain.commit
  */
 interface GithubClientPort {
     fun fetchCommits(githubId: String, repositoryName: String): List<CommitInsertDto>
-    fun existsRepository(githubId: String, repositoryName: String): Boolean
 }

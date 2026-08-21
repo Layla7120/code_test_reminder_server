@@ -12,6 +12,7 @@
 #
 # 오탐이 늘면 규칙을 넓히지 말고 이 게이트를 지운다. (ADR-0008)
 set -uo pipefail
+cd "$(dirname "$0")/.."   # 경로를 저장소 루트 기준으로 본다 — 어디서 부르든 같은 답이 나오게
 out=$(mktemp)
 
 is_future() {

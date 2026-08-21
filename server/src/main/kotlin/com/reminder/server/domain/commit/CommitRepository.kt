@@ -59,8 +59,6 @@ interface CommitRepository : JpaRepository<Commit, Long> {
     // 난이도별 커밋 수 — JPQL GROUP BY (native query 불필요)
     @Query("SELECT c.level AS level, COUNT(c) AS count FROM Commit c WHERE c.user.id = :userId GROUP BY c.level")
     fun findLevelDistribution(@Param("userId") userId: Long): List<LevelCountProjection>
-
-    fun existsBySha(sha: String): Boolean
 }
 
 interface LevelCountProjection {
