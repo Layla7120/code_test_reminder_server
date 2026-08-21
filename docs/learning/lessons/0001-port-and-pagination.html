@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>레슨 1 — 포트는 테스트 경계다</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+
+<p class="eyebrow">레슨 01 · 테스트 경계</p>
+<h1>포트는 테스트 경계다</h1>
+<p class="lede">
+  <code>GithubClientPort</code> 를 예로, 인터페이스 하나의 위치가 어떤 코드를 검증
+  가능하게 만들고 어떤 코드를 영영 검증 불가능하게 만드는지 본다.
+</p>
+
+<h2>1. 포트가 무슨 말인가</h2>
+
+<p>
+  포트는 <strong>애플리케이션이 소유한 인터페이스</strong>다. "나는 이런 게 필요하다"를
+  선언하고, 그걸 <em>어떻게</em> 제공할지는 바깥에 맡긴다. 구현체를 어댑터라 부른다.
+  Alistair Cockburn 이 2005년에 이름 붙인
+  <a href="https://alistair.cockburn.us/hexagonal-architecture/">Ports and Adapters</a> 다.
+</p>
+
+<pre><code>GithubClientPort            ← 포트 (인터페이스)
+  ├── GithubClient          ← 어댑터: 진짜 api.github.com
+  └── MockGithubClient      ← 어댑터: 테스트용</code></pre>
+
+<p>
+  <code>CommitService</code> 는 포트에만 의존한다. 그래서 테스트에서 진짜 GitHub 대신
+  Mock 을 끼울 수 있다. 이게 포트의 목적이다 — <strong>외부 세계를 갈아 끼울 수 있는 경계</strong>.
+</p>
+
+<div class="callout">
+  <strong>이 레슨의 핵심 한 줄.</strong>
+  포트의 시그니처는 단순한 함수 선언이 아니라 <em>무엇이 경계를 넘어오는가</em>의 계약이고,
+  동시에 <em>테스트 더블이 대체할 수 있는 범위</em>의 선이다. 그 선보다 아래에 있는 코드는
+  그 더블로 테스트할 수 없다.
+</div>
+
+<h2>2. 페이지네이션 루프</h2>
+
+<p>GitHub 은 커밋을 한 번에 다 주지 않는다.</p>
+
+<pre><code>GET /repos/x/y/commits?per_page=100&amp;page=1   → 100개
+GET /repos/x/y/commits?per_page=100&amp;page=2   → 100개
+GET /repos/x/y/commits?per_page=100&amp;page=3   →  37개   ← 100 미만 = 마지막</code></pre>
+
+<p>
+  전부 가져오려면 page 를 올리며 반복해야 한다. 규약은
+  <a href="https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api">GitHub REST 페이지네이션 문서</a>에 있다.
+</p>
+
+<pre><code>var page = 1
+val all = mutableListOf&lt;CommitInsertDto&gt;()
+while (true) {
+    val batch = getPage(page)
+    all += batch
+    if (batch.size &lt; 100) break   // ← 종료 조건
+    page++
+}</code></pre>
+
+<p>
+  <strong>종료 조건이 이 루프의 전부다.</strong> 틀리는 방식이 둘인데, 위험한 쪽은 조용한 쪽이다.
+</p>
+
+<div class="scroll-x">
+<table>
+  <tr><th>틀린 방식</th><th>증상</th><th>알아챌 수 있나</th></tr>
+  <tr><td>영영 안 멈춤</td><td>무한 루프. rate limit 소진</td><td class="yes">즉시 안다</td></tr>
+  <tr><td>너무 일찍 멈춤</td><td>커밋이 조용히 누락</td><td class="no">아무도 모른다</td></tr>
+</table>
+</div>
+
+<blockquote>
+  이 저장소의 <code>GithubClient</code> 는 루프가 <em>아예 없다.</em> <code>page=1</code> 만
+  받고 끝난다 — 두 번째 칸의 극단이다. 커밋이 30건을 넘는 순간부터 조용히 사라지는데
+  예외도 로그도 없었다.
+</blockquote>
+
+<h2>3. 루프를 포트의 어느 쪽에 둘 것인가</h2>
+
+<h3>A — 포트 아래 (루프가 어댑터 안)</h3>
+<pre><code>CommitService ──▶ GithubClientPort.fetchCommits(id, repo)
+                       ├── GithubClient       ⟳ 루프
+                       └── MockGithubClient     (루프 없음)</code></pre>
+<p>
+  Mock 이 <em>포트를</em> 구현하므로, Mock 을 끼우면 루프를 통째로 건너뛴다.
+  종료 조건을 <code>&gt;</code> 로 뒤집어 써도 테스트는 전부 초록불이다.
+</p>
+
+<h3>B — 포트 위 (루프가 서비스 안)</h3>
+<pre><code>CommitService ⟳ ──▶ GithubClientPort.fetchCommits(id, repo, page)
+                       ├── GithubClient         (한 페이지)
+                       └── MockGithubClient     (한 페이지 — 흉내 가능)</code></pre>
+<p>
+  루프가 검증된다. 대신 <code>CommitService</code> 가 "GitHub 은 100건씩 준다"를 알게 된다.
+  격리하려고 만든 포트에 GitHub 의 사정이 샌다.
+</p>
+
+<h3>C — 포트 아래 + 가짜 HTTP (경계를 소켓으로 내림)</h3>
+<pre><code>CommitService ──▶ GithubClientPort
+                       └── GithubClient ⟳ ──▶ MockRestServiceServer</code></pre>
+<p>
+  루프도 검증되고 <code>CommitService</code> 는 여전히 아무것도 모른다.
+  대가는 <code>GithubClient</code> 를 테스트 가능하게 만드는 배선 —
+  <code>RestClient.Builder</code> 를 주입받도록 바꾸는 것뿐이다.
+</p>
+
+<div class="scroll-x">
+<table>
+  <tr><th></th><th>루프 위치</th><th>서비스가 GitHub 을 아는가</th><th>루프를 검증하는 더블</th></tr>
+  <tr><td><strong>A</strong></td><td>어댑터</td><td class="yes">모른다</td><td class="no">없다</td></tr>
+  <tr><td><strong>B</strong></td><td>서비스</td><td class="no">안다</td><td class="yes">MockGithubClient</td></tr>
+  <tr><td><strong>C</strong></td><td>어댑터</td><td class="yes">모른다</td><td class="yes">MockRestServiceServer</td></tr>
+</table>
+</div>
+
+<p>
+  <strong>A 는 격리를 얻고 검증을 잃는다. B 는 검증을 얻고 격리를 잃는다.
+  C 는 테스트 경계를 한 칸 아래로 내려 둘 다 가진다.</strong>
+</p>
+
+<div class="callout">
+  <strong>정직하게 남길 단서.</strong>
+  <code>MockRestServiceServer.bindTo(RestClient.Builder)</code> 는 Spring Framework 6.1 부터
+  있고 이 프로젝트는 7.0.6 이라 쓸 수 있다 —
+  <code>spring-test</code> 가 이미 <code>testRuntimeClasspath</code> 에 있어 의존성도 안 는다.
+  다만 Spring 공식 레퍼런스는 전송 계층까지 보려면 mock web server(WireMock 등)를 권한다.
+  <em>여기서 C 를 고르는 건 그게 Spring 의 권장안이라서가 아니라, 검증 대상이 전송 계층이
+  아니라 루프 종료 조건이고 WireMock 은 의존성이 늘기 때문이다.</em>
+</div>
+
+<h2>4. 확인</h2>
+
+<div class="quiz" data-answer="2">
+  <p class="q">A 안(루프가 어댑터 안, Mock 은 포트 구현)에서 종료 조건을 반대로 쓰면?</p>
+  <button>테스트가 빨간불이 되어 즉시 잡힌다</button>
+  <button>Mock 이 무한 루프에 빠져 멈춘다</button>
+  <button>테스트는 전부 통과하고 운영에서만 샌다</button>
+  <button>컴파일 단계에서 타입이 안 맞는다</button>
+  <p class="fb">
+    Mock 이 포트를 구현하므로 루프 코드는 테스트 중 한 번도 실행되지 않는다.
+    <code>AGENTS.md</code> 의 규칙 — <em>"지웠을 때 아무 테스트도 안 깨지는 코드는
+    검증되고 있지 않은 것"</em> — 에 정확히 걸린다.
+  </p>
+</div>
+
+<div class="quiz" data-answer="1">
+  <p class="q">C 안이 A 안에 비해 실제로 추가로 요구하는 것은?</p>
+  <button>새 테스트 라이브러리 의존성 하나</button>
+  <button>어댑터가 HTTP 클라이언트를 주입받는 배선</button>
+  <button>포트 시그니처에 page 파라미터 추가</button>
+  <button>서비스 계층이 페이지 크기를 아는 것</button>
+  <p class="fb">
+    <code>GithubClient</code> 가 지금은 생성자에서 <code>RestClient</code> 를 직접 만든다.
+    <code>RestClient.Builder</code> 를 받도록 바꿔야 테스트가 거기 끼어들 수 있다.
+    의존성은 안 늘고(<code>spring-test</code> 는 이미 있다), 포트도 그대로다.
+  </p>
+</div>
+
+<h2>이 레슨의 일반 규칙</h2>
+<p>
+  포트를 그릴 때 물을 것: <strong>"이 선 아래에 로직이 얼마나 있는가?"</strong>
+  선 아래가 얇은 번역층이면 A 로 충분하다. 선 아래에 <em>판단</em>이 있으면 —
+  루프, 재시도, 조건 분기 — 그 판단은 포트 더블로는 영영 검증되지 않는다.
+  그때 선택지는 판단을 선 위로 올리거나(B), 선을 하나 더 아래에 긋는 것(C)뿐이다.
+</p>
+
+<h2>먼저 읽을 것</h2>
+<p>
+  <a href="https://martinfowler.com/articles/mocksArentStubs.html">Martin Fowler,
+  <em>Mocks Aren't Stubs</em></a> — 테스트 더블의 종류와, 더블을 어디에 끼우느냐가
+  무엇을 검증하는지 바꾼다는 이 레슨의 주제를 가장 정확하게 다룬 글이다.
+</p>
+
+<footer>
+  <p>
+    <strong>막히면 물어보세요.</strong> 이 레슨은 대화의 일부입니다 —
+    "B 안이 왜 격리를 깨는지 더 보여줘", "지금 GithubClient 를 C 로 바꾸면 어떻게 생겼는지 보여줘"
+    같은 후속 질문에 이어서 답합니다.
+  </p>
+  <nav class="lesson-links">
+    <a href="../MISSION.md">MISSION</a> ·
+    <a href="../RESOURCES.md">RESOURCES</a> ·
+    <a href="../learning-records/">학습 기록</a>
+  </nav>
+</footer>
+
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

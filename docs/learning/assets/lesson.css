@@ -1,0 +1,106 @@
+/* 공통 레슨 스타일 — 모든 레슨이 이 파일을 링크한다.
+   Tufte 계열: 넓은 여백, 본문 세리프, 코드 모노, 곁주석. */
+
+:root {
+  --ink: #1a1a1a;
+  --ink-soft: #555;
+  --paper: #fffef9;
+  --rule: #d8d4c8;
+  --accent: #7a2020;
+  --good: #1f6b3a;
+  --bad: #96331f;
+  --code-bg: #f3f1ea;
+  --measure: 40rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8e6e0; --ink-soft: #a8a49a; --paper: #16150f;
+    --rule: #3a3830; --accent: #e08a7a; --good: #7fc99a;
+    --bad: #e08a7a; --code-bg: #21201a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0 auto; padding: 4rem 2rem 8rem; max-width: var(--measure);
+  background: var(--paper); color: var(--ink);
+  font-family: ui-serif, "Iowan Old Style", Georgia, serif;
+  font-size: 1.0625rem; line-height: 1.65;
+  -webkit-text-size-adjust: 100%;
+}
+
+.eyebrow {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-soft); margin: 0 0 0.75rem;
+}
+
+h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 0.5rem; font-weight: 600; }
+h2 {
+  font-size: 1.25rem; margin: 3rem 0 0.75rem; font-weight: 600;
+  padding-bottom: 0.3rem; border-bottom: 1px solid var(--rule);
+}
+h3 { font-size: 1.02rem; margin: 2rem 0 0.5rem; font-weight: 600; }
+
+.lede { font-size: 1.15rem; color: var(--ink-soft); margin: 0 0 2.5rem; line-height: 1.5; }
+
+code, pre, .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.86em;
+}
+code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 3px; }
+pre {
+  background: var(--code-bg); padding: 1rem 1.1rem; border-radius: 5px;
+  overflow-x: auto; line-height: 1.5; border-left: 3px solid var(--rule);
+}
+pre code { background: none; padding: 0; }
+
+table { border-collapse: collapse; width: 100%; margin: 1.5rem 0; font-size: 0.94rem; }
+th, td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
+.scroll-x { overflow-x: auto; }
+
+blockquote {
+  margin: 1.5rem 0; padding: 0.6rem 0 0.6rem 1.1rem;
+  border-left: 3px solid var(--accent); color: var(--ink-soft); font-style: italic;
+}
+
+.callout {
+  margin: 1.75rem 0; padding: 1rem 1.2rem; border-radius: 5px;
+  background: var(--code-bg); border-left: 3px solid var(--accent);
+  font-size: 0.96rem;
+}
+.callout strong { color: var(--accent); }
+
+.yes { color: var(--good); font-weight: 600; }
+.no  { color: var(--bad);  font-weight: 600; }
+
+/* 퀴즈 위젯 — assets/quiz.js 가 동작시킨다 */
+.quiz { margin: 2rem 0; padding: 1.2rem 1.3rem; border: 1px solid var(--rule); border-radius: 6px; }
+.quiz .q { font-weight: 600; margin: 0 0 0.9rem; }
+.quiz button {
+  display: block; width: 100%; text-align: left; margin: 0.4rem 0;
+  padding: 0.6rem 0.8rem; border: 1px solid var(--rule); border-radius: 4px;
+  background: var(--paper); color: var(--ink); cursor: pointer;
+  font-family: inherit; font-size: 0.95rem; line-height: 1.4;
+}
+.quiz button:hover:not([disabled]) { border-color: var(--accent); }
+.quiz button.correct { border-color: var(--good); background: color-mix(in srgb, var(--good) 12%, transparent); }
+.quiz button.wrong   { border-color: var(--bad);  background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.quiz .fb { margin-top: 0.9rem; font-size: 0.92rem; color: var(--ink-soft); display: none; }
+.quiz .fb.show { display: block; }
+
+footer {
+  margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+  font-size: 0.9rem; color: var(--ink-soft);
+}
+footer a, a { color: var(--accent); }
+nav.lesson-links { font-size: 0.9rem; margin-top: 1rem; }
+
+@media print {
+  body { max-width: none; padding: 0; font-size: 11pt; background: #fff; color: #000; }
+  .quiz button { break-inside: avoid; }
+  nav.lesson-links { display: none; }
+}

@@ -95,7 +95,7 @@ docs/         기록
 ```
 
 DB 스키마는 `server/src/main/resources/db/migration/`의 Flyway 마이그레이션이 진실 원천이다
-(구 `infra/init.sql`을 V1 베이스라인으로 승격 — [PLAN-db-foundation.md](PLAN-db-foundation.md) Phase 0).
+(구 infra/init.sql 을 V1 베이스라인으로 승격 — [PLAN-db-foundation.md](PLAN-db-foundation.md) Phase 0).
 
 설계 판단과 트레이드오프 — 왜 Redis가 이 규모에 과했는지, `init.sql`이 마이그레이션 도구가 아닌 이유,
 결함이 어디서 왔는지 — 는 **[docs/기록.md](docs/기록.md)** 에 있다. 잘한 것보다 틀린 것을 더 자세히 적었다.
