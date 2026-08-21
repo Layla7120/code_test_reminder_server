@@ -29,14 +29,8 @@ class CommitService(
             .orElseThrow { UserNotFoundException(userId) }
 
         // 중복 수집을 락으로 막지 않는다. 이 연산이 멱등이기 때문이다 —
-        // 커밋 삽입은 UNIQUE(sha) + ON DUPLICATE KEY UPDATE 이고 점수는 절대값 재계산이라,
-        // 같은 요청이 몇 번을 동시에 와도 결과가 같다.
-        //
-        // 있던 Redis 분산 락을 뺀 이유: 그 락은 정합성을 지키려 있었는데(버그 A), TTL 기반
-        // 락은 원래 그 보장을 못 한다. GitHub 응답이 TTL 을 넘기면 만료된 락으로 계속 돌고,
-        // 값에 소유자 표시가 없어 해제 시 남의 락을 지운다. 막으려면 소유자 토큰 + Lua +
-        // TTL 연장 + 펜싱 토큰까지 가야 한다. 정합성을 락에 기대지 않는 쪽이 낫다.
-        // 경위: PLAN-aggregate-table.md Phase 4 주석
+        // 삽입은 UNIQUE(user_id, sha) + ON DUPLICATE KEY UPDATE 이고 점수는 절대값
+        // 재계산이라, 같은 요청이 몇 번을 동시에 와도 결과가 같다.
 
         val rawCommits = githubClient.fetchCommits(user.githubId, user.repositoryName)
         val dtos = rawCommits.map { it.copy(userId = userId) }
@@ -47,7 +41,6 @@ class CommitService(
             .distinctBy { it.sha }  // 같은 fetch 안의 sha 중복 방어 (정상 GitHub 응답에서는 없음)
             .filter { it.sha !in existingShas }
 
-        // sha 정렬 후 bulk upsert (InnoDB Next-Key Lock 순서 보장 → 데드락 방지)
         commitJdbcRepository.bulkUpsert(dtos)
 
         // 방금 쓴 커밋을 같은 트랜잭션에서 다시 세어 절대값으로 덮어쓴다 — 이벤트도 AFTER_COMMIT 도 안 쓴다.

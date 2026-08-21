@@ -20,9 +20,6 @@ import java.time.YearMonth
  * 증명하는 주장: "집계 테이블은 commits 를 다시 센 절대값을 담고, 읽기 쿼리는 랭킹 규칙을 지킨다"
  *
  * 아직 아무도 이 저장소를 읽지 않는 단계라, 읽는 쪽이 붙기 전에 쿼리 자체를 고정해둔다.
- *
- * 비활성 유저 제외는 여기서 검증하지 않는다 — 쿼리가 아니라 행 삭제로 하는 일이라
- * UserDeactivationApiTest 가 HTTP 로 확인한다.
  */
 class UserMonthlyScoreRepositoryTest : IntegrationTest() {
 

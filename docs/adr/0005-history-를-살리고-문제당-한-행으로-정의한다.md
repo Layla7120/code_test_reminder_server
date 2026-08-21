@@ -1,6 +1,6 @@
 # ADR-0005: history 를 살리고 문제당 한 행으로 정의한다
 
-**날짜** 2026-08-21 · **상태** 승인됨 · **관련** [0001](0001-사용자-삭제를-물리-삭제로-단일화한다.md), `PLAN-db-foundation.md` Phase 5
+**날짜** 2026-08-21 · **상태** 승인됨 · **관련** [0001](0001-사용자-삭제를-물리-삭제로-단일화한다.md), `docs/archive/PLAN-db-foundation.md` Phase 5
 
 ## 맥락
 
@@ -8,10 +8,10 @@
 `HistoryRepository.findByUser` 는 **어디서도 호출되지 않는다**(데모 페이지도 안 쓴다).
 데이터가 들어가기만 하고 나오지 않았다.
 
-`PLAN-db-foundation.md` Phase 5 는 이 테이블을 *"읽는 코드가 `findByUser` 하나뿐인
+`docs/archive/PLAN-db-foundation.md` Phase 5 는 이 테이블을 *"읽는 코드가 `findByUser` 하나뿐인
 지금이 고칠 때"* 라고 적었는데, 정확히는 **읽는 코드가 0개**였다.
 
-측정 결과 이 테이블은 `PLAN-db-foundation.md` §1 의 **파생 사본 4문 테스트 ③번
+측정 결과 이 테이블은 `docs/archive/PLAN-db-foundation.md` §1 의 **파생 사본 4문 테스트 ③번
 ("읽는 소비자가 있는가")** 을 낙제하고 있었다.
 
 **사용자 확인**: 죽은 코드가 아니라 *"기록 추가하려다 중단한"* 미완성 기능이다.
@@ -49,7 +49,7 @@ history (
 **시도당 1행 (제약 없음, 재도전마다 누적).**
 버린 이유: 중복 POST 방어가 앱에도 DB 에도 없어 화면에 같은 문제가 여러 번 뜬다.
 재도전 이력을 보여줄 화면 계획이 없으면 쓰레기 행을 모으는 것이다.
-UNIQUE 는 **DB 가 지킬 수 있는 규칙**이라 이쪽이 `PLAN-db-foundation.md` §2-4 에 맞는다.
+UNIQUE 는 **DB 가 지킬 수 있는 규칙**이라 이쪽이 `docs/archive/PLAN-db-foundation.md` §2-4 에 맞는다.
 
 **문제당 1행 + 최고 기록만 갱신.**
 버린 이유: "더 빠른가" 비교 로직이 늘고, `solve_time` 이 문자열인 상태에서는
@@ -72,7 +72,7 @@ NULL 허용은 정렬 규칙을 매 쿼리마다 따지게 하고 "언제 풀었
 - `endpoint-allowlist.txt` 에서 **심각도 "중"** 한 줄이 사라진다(`HistoryController#saveHistory`).
   `verifyEndpointCoverage` 가 이미 그 게이트다 — 남은 개수는 그 파일이 진실 원천이라
   여기 적지 않는다.
-- `PLAN-db-foundation.md` Phase 5 의 `history` 항목이 여기로 흡수된다.
+- `docs/archive/PLAN-db-foundation.md` Phase 5 의 `history` 항목이 여기로 흡수된다.
 - **잃는 것**: 마이그레이션이 `DELETE` → `ALTER` 순서라 **되돌릴 수 없다.**
   마이그레이션 파일 주석에 그 사실을 적는다.
   dev 볼륨에 살릴 `history` 데이터가 없다는 전제로 진행한다.

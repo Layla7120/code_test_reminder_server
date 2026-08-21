@@ -170,7 +170,7 @@ echo $DB_USER $DB_PASSWORD              # 환경 변수 확인
 
 집계 테이블 추가(785ee3c) **이전에** 만든 볼륨입니다. `baseline-on-migrate`는 기존 스키마를
 "V1과 같다"고 **선언만 하고 V1을 실행하지 않으므로**, 그때 누락된 테이블은 채워지지
-않습니다. Flyway는 과거의 드리프트를 소급해 고치지 못합니다 (`PLAN-db-foundation.md` Phase 0).
+않습니다. Flyway는 과거의 드리프트를 소급해 고치지 못합니다 (`docs/archive/PLAN-db-foundation.md` Phase 0).
 
 개발 데이터라면 볼륨을 지우는 게 가장 깨끗합니다:
 

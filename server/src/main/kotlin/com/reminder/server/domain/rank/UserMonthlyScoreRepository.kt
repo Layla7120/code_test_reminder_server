@@ -37,7 +37,7 @@ interface UserMonthlyScoreRepository : JpaRepository<UserMonthlyScore, UserMonth
 
     // score > 0 은 "커밋 0건인 유저는 랭킹에 없다".
     // 탈퇴자를 빼는 일은 여기가 아니라 FK 의 ON DELETE CASCADE 가 행을 지워서 한다 —
-    // users 를 조인하면 옵티마이저가 idx_rank 를 버리고 users 를 풀스캔한다 (50k 기준 87ms vs 0.5ms).
+    // users 를 조인하면 옵티마이저가 idx_rank 를 버리고 users 를 풀스캔한다 (50k 기준 87ms vs 0.5ms, 2026-08-17 측정).
     // 동순위 계산은 SQL 이 아니라 toDenseRankEntries 가 한다.
     @Query(
         """

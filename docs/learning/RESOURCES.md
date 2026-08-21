@@ -13,7 +13,7 @@
   **확인함(2026-08-21)**: `bindTo(RestClient.Builder)` 는 6.1 부터. 이 프로젝트는 7.0.6.
   단, 레퍼런스 문서는 전송 계층 테스트에는 mock web server 를 권장한다 — 그 단서를 같이 읽을 것.
 - *Designing Data-Intensive Applications* — Kleppmann. 5장(복제)·7장(트랜잭션)·3장(저장 엔진)
-  언제 볼 것: 파생 사본과 일관성. `PLAN-db-foundation.md` §6 이 이미 매핑해뒀다.
+  언제 볼 것: 파생 사본과 일관성. `docs/archive/PLAN-db-foundation.md` §6 이 이미 매핑해뒀다.
 - MySQL 공식 문서 15.6.2(InnoDB 인덱스 구조), 11.2(날짜/시간), 10.3(charset)
   언제 볼 것: 클러스터드 인덱스가 PK 를 세컨더리에 복제하는 비용, DATETIME vs TIMESTAMP.
 

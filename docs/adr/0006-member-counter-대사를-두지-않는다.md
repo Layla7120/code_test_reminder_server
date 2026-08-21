@@ -1,20 +1,20 @@
 # ADR-0006: member_counter 대사(reconciliation)를 두지 않는다
 
-**날짜** 2026-08-21 · **상태** 승인됨(미구현) · **관련** [0002](0002-cascade-는-파생값의-원천이-아닐-때만-건다.md), `docs/삭제-명세.md` §6-4
+**날짜** 2026-08-21 · **상태** 승인됨 · **관련** [0002](0002-cascade-는-파생값의-원천이-아닐-때만-건다.md), 구 docs/삭제-명세.md §6-4
 
 ## 맥락
 
 `groups.member_counter` 는 `participate` 행 개수의 파생값이다.
-`docs/삭제-명세.md` §5 가 *"`member_counter` == `participate` 실제 개수"* 를
+구 docs/삭제-명세.md §5 가 *"`member_counter` == `participate` 실제 개수"* 를
 **대사 없음**으로 표시해뒀고, §6-4 가 이를 미결정으로 남겨뒀다.
 
-`PLAN-db-foundation.md` §1 의 4문 테스트에서도 이 열의 ④번(드리프트 감지·복구 수단)만
+`docs/archive/PLAN-db-foundation.md` §1 의 4문 테스트에서도 이 열의 ④번(드리프트 감지·복구 수단)만
 낙제로 남아 있었다 — 다른 두 사본(Redis ZSET, `user_monthly_score`)은 사본을 줄여서 해소됐다.
 
 ## 결정
 
 **대사 잡을 만들지 않는다.** CHECK 제약(`0 <= member_counter <= member_max_count`)만
-`PLAN-db-foundation.md` Phase 5 에서 걸고, *"실제 개수와 같은가"* 는 테스트로만 지킨다.
+`docs/archive/PLAN-db-foundation.md` Phase 5 에서 걸고, *"실제 개수와 같은가"* 는 테스트로만 지킨다.
 
 ## 검토하고 버린 것
 
@@ -47,7 +47,7 @@
 
 ## 결과
 
-- `PLAN-db-foundation.md` §1 4문 테스트의 마지막 낙제 칸이 **"채우지 않기로 결정"** 으로 닫힌다.
+- `docs/archive/PLAN-db-foundation.md` §1 4문 테스트의 마지막 낙제 칸이 **"채우지 않기로 결정"** 으로 닫힌다.
 - **잃는 것**: `member_counter` 가 실제와 어긋나도 감지할 수단이 없다.
   이 결정은 그 위험을 **없앤 게 아니라 받아들인 것**이다.
   받아들일 수 있는 근거는 쓰기 경로가 하나라는 것뿐이고,

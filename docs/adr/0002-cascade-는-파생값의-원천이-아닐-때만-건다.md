@@ -8,10 +8,10 @@
 그러려면 `commits`·`history`·`user_monthly_score`·`participate` 가 먼저 사라져야 한다.
 
 현재 `V1__baseline.sql` 의 FK 는 **전부 `ON DELETE` 절이 없다** = RESTRICT.
-`docs/삭제-명세.md` §6-2 가 이 상태를 기록해뒀다 — Alembic 시절 스키마는 CASCADE 였고
+구 docs/삭제-명세.md §6-2 가 이 상태를 기록해뒀다 — Alembic 시절 스키마는 CASCADE 였고
 Flyway 베이스라인은 RESTRICT 라, **두 스키마가 어긋난 채 남아 있었다.**
 
-`PLAN-db-foundation.md` §2-4 의 원칙은 *"DB 가 스스로 지킬 수 있는 규칙은 전부 DDL 로"* 다.
+`docs/archive/PLAN-db-foundation.md` §2-4 의 원칙은 *"DB 가 스스로 지킬 수 있는 규칙은 전부 DDL 로"* 다.
 그 원칙을 그대로 따르면 전부 CASCADE 다. **그런데 한 곳에서 조용히 깨진다.**
 
 ## 결정
