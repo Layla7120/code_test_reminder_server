@@ -14,8 +14,7 @@ GitHub 저장소의 백준 풀이 커밋을 모아 **월별 랭킹**을 매긴�
 server/       Kotlin + Spring Boot (현재)
 app/          Flask (원본. 대조용, 유지보수 안 함)
 migrations/   Flask 시절 Alembic 마이그레이션
-bench/        랭킹 A/B 측정 기록 (Redis 시절. 지금은 재현 안 됨)
-docs/         ADR · 용어집 · 기록
+docs/         ADR · 용어집 · 기록 · 완료된 계획(archive/)
 ```
 
 스키마의 진실 원천은 `server/src/main/resources/db/migration/` 의 Flyway 마이그레이션이다.
@@ -79,7 +78,7 @@ docker compose up -d          # MySQL (스키마는 기동 시 Flyway 가 만든
 | 틀린 것과 그 경위     | [docs/기록.md](docs/기록.md) — 잘한 것보다 틀린 것을 자세히 적었다 |
 | 고칠 때 지킬 것       | [AGENTS.md](AGENTS.md)                                             |
 | API 명세 · 트러블슈팅 | [server/README.md](server/README.md)                               |
-| 성능 측정 **기록** | [bench/README.md](bench/README.md) — Redis 를 걷어낸 근거. 지금은 재현되지 않는다 |
+| 성능 측정 **기록** | [docs/archive/bench/README.md](docs/archive/bench/README.md) — Redis 를 걷어낸 근거. 지금은 재현되지 않는다 |
 
 이 저장소에서 넣었다가 도로 뺀 것들이다. 왜 뺐는지는 [docs/기록.md](docs/기록.md) 에 있다.
 

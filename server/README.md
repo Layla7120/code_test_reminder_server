@@ -3,7 +3,7 @@
 **운영 레퍼런스**입니다. 실행 방법, API, 트러블슈팅만 다룹니다.
 
 - 이 프로젝트가 무엇이고 **무엇이 과했는지** → [`../docs/기록.md`](../docs/기록.md)
-- 랭킹 성능 측정 기록(재현 불가) → [`../bench/README.md`](../bench/README.md)
+- 랭킹 성능 측정 기록(재현 불가) → [`../docs/archive/bench/README.md`](../docs/archive/bench/README.md)
 
 ---
 

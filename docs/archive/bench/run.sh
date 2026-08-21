@@ -30,8 +30,8 @@
 # 그래서 이 측정 하나가 "Redis가 죽으면 어떻게 되나"도 함께 답한다.
 #
 # 사전 조건: docker compose up -d / k6 설치 / JDK 21
-# 실행: bash bench/run.sh                          (약 25분)
-#      SCALES="10000" DURATION=20s bash bench/run.sh   (빠른 확인용)
+# 실행: bash docs/archive/bench/run.sh                          (약 25분)
+#      SCALES="10000" DURATION=20s bash docs/archive/bench/run.sh   (빠른 확인용)
 
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -41,7 +41,7 @@ export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 21 2>/dev/null \
 export PATH="$JAVA_HOME/bin:$PATH"
 export DB_USER=reminder DB_PASSWORD=reminder DB_NAME=reminder GITHUB_TOKEN=unused
 
-OUT=bench/results; mkdir -p "$OUT"
+OUT=docs/archive/bench/results; mkdir -p "$OUT"
 JAR=server/build/libs/server-0.0.1-SNAPSHOT.jar
 # 비밀번호를 인자로 넘기면 mysql 이 경고를 stderr 로 뱉는다. MYSQL_PWD 로 전달한다.
 MYSQL=(docker exec -i -e MYSQL_PWD=reminder reminder-mysql mysql -ureminder reminder)
@@ -107,7 +107,7 @@ printf "%-8s %-6s %10s %10s %11s %8s\n" 유저 조건 "rank(ms)" "user(ms)" "req
 
 for users in ${SCALES:-10000 50000 100000}; do
   "${REDIS[@]}" FLUSHALL >/dev/null
-  { echo "SET @target_users=$users;"; cat bench/seed.sql; } | "${MYSQL[@]}" >/dev/null
+  { echo "SET @target_users=$users;"; cat docs/archive/bench/seed.sql; } | "${MYSQL[@]}" >/dev/null
 
   # Redis 조건이 정말 Redis 를 타려면 랭킹이 채워져 있어야 한다.
   # 비어 있으면 getTop30() 이 에러 없이 DB 폴백을 타서 두 조건이 같은 걸 재게 된다.
@@ -131,7 +131,7 @@ for users in ${SCALES:-10000 50000 100000}; do
 
     txt="$OUT/${users}_${arm}.txt"
     k6 run -e MAX_USER_ID="$users" -e DURATION="${DURATION:-60s}" --summary-export="$OUT/${users}_${arm}.json" \
-        bench/rank_ab.js > "$txt" 2>&1
+        docs/archive/bench/rank_ab.js > "$txt" 2>&1
     stop
 
     flat=$(sed 's/\.\{2,\}/ /g' "$txt")

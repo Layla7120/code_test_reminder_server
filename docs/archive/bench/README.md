@@ -3,8 +3,12 @@
 
 > **⚠️ 이 문서는 기록입니다 (2026-08-19 이후).**
 >
+> 2026-08-21 에 저장소 루트 `bench/` 에서 여기로 옮겼습니다. 스스로 기록이라고
+> 적어두고도 현재 층에 있었고, 루트 README 가 이걸 "성능 측정 방법"이라고
+> 가리키고 있었습니다 — 안 도는 스크립트를 방법이라 부른 셈입니다.
+>
 > `ranking.redis.enabled` 스위치가 사라져 아래 A/B 는 더 이상 재현되지 않습니다.
-> 랭킹 경로가 `user_monthly_score` 하나뿐입니다. `bench/run.sh` 는 ZSET 을 채우던
+> 랭킹 경로가 `user_monthly_score` 하나뿐입니다. `docs/archive/bench/run.sh` 는 ZSET 을 채우던
 > 스케줄러가 없어져 워밍 단계에서 하드 실패합니다 — 조용히 0 을 재지는 않습니다.
 >
 > 지우지 않는 이유: `docs/기록.md` 의 측정 표가 이 문서와 스크립트를 근거로 서 있습니다.
@@ -26,7 +30,7 @@
 (`RankService.getTop30FromDb()`)를 강제로 태우는 것이다.
 그래서 이 측정 하나가 "Redis가 죽으면 어떻게 되나"도 함께 답한다.
 
-**결과와 해석 → [`../docs/기록.md`](../docs/기록.md)** · 원본 → [`results/`](results/)
+**결과와 해석 → [`../../기록.md`](../../기록.md)** · 원본 → [`results/`](results/)
 
 ---
 
@@ -36,8 +40,8 @@
 docker compose up -d
 brew install k6
 
-bash bench/run.sh                                  # 약 25분
-SCALES="10000" DURATION=20s bash bench/run.sh      # 빠른 확인용
+bash docs/archive/bench/run.sh                                  # 약 25분
+SCALES="10000" DURATION=20s bash docs/archive/bench/run.sh      # 빠른 확인용
 ```
 
 규모마다 **시드 → Redis 워밍 → 사전 검증 → 측정 → 뒷정리**를 알아서 한다.
@@ -82,7 +86,7 @@ cd server && ./gradlew bootJar --quiet && cd ..
 "지난달 데이터"가 되어 랭킹이 조용히 0건이 되기 때문이다.
 
 ```bash
-{ echo "SET @target_users = 100000;"; cat bench/seed.sql; } \
+{ echo "SET @target_users = 100000;"; cat docs/archive/bench/seed.sql; } \
   | docker exec -i -e MYSQL_PWD=reminder reminder-mysql mysql -ureminder reminder
 ```
 
@@ -136,7 +140,7 @@ curl -s -o /dev/null -w "%{time_total}초\n" http://localhost:8080/rank
 **DB 조건**으로 서버를 켜고:
 
 ```bash
-k6 run -e MAX_USER_ID=100000 bench/rank_ab.js
+k6 run -e MAX_USER_ID=100000 docs/archive/bench/rank_ab.js
 ```
 
 60초 동안 처리한 요청이 300건 아래에서 멈추고, 실패율이 20%대까지 오른다.
