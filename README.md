@@ -107,11 +107,11 @@ DB 스키마는 `server/src/main/resources/db/migration/`의 Flyway 마이그레
 **테스트** (Docker만 있으면 됨):
 
 ```bash
-export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 cd server && ./gradlew test
 ```
 
-Testcontainers가 실제 MySQL을 띄운다 (**81개 통과**). 이어서 `verifyEndpointCoverage`가
+Testcontainers가 실제 MySQL을 띄운다. 이어서 `verifyEndpointCoverage`가
 HTTP 테스트 없는 엔드포인트를 찾으면 빌드를 깬다. push·PR마다 GitHub Actions에서도 같은 명령이 돈다.
 
 > `openjdk@21`이 PATH에 없으면(Homebrew keg-only) JAVA_HOME을 직접 지정:
@@ -136,7 +136,7 @@ cd server && ./gradlew bootRun    # http://localhost:8080 (웹 데모 포함)
 | ORM        | SQLAlchemy 2.0                | Spring Data JPA           |
 | 랭킹       | 매 요청 집계                  | 집계 테이블(user_monthly_score) |
 | 마이그레이션 | Alembic                     | Flyway                    |
-| 테스트     | 없음                          | Testcontainers, 81개      |
+| 테스트     | 없음                          | Testcontainers            |
 
 ## 주요 API
 

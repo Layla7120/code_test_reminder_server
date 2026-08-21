@@ -70,7 +70,8 @@ NULL 허용은 정렬 규칙을 매 쿼리마다 따지게 하고 "언제 풀었
 ## 결과
 
 - `endpoint-allowlist.txt` 에서 **심각도 "중"** 한 줄이 사라진다(`HistoryController#saveHistory`).
-  부채 6개 → 5개. `verifyEndpointCoverage` 가 이미 그 게이트다.
+  `verifyEndpointCoverage` 가 이미 그 게이트다 — 남은 개수는 그 파일이 진실 원천이라
+  여기 적지 않는다.
 - `PLAN-db-foundation.md` Phase 5 의 `history` 항목이 여기로 흡수된다.
 - **잃는 것**: 마이그레이션이 `DELETE` → `ALTER` 순서라 **되돌릴 수 없다.**
   마이그레이션 파일 주석에 그 사실을 적는다.

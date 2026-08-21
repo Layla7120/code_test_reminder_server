@@ -45,7 +45,7 @@ cd server && ./gradlew bootRun
 ### 테스트
 
 ```bash
-cd server && ./gradlew test        # 81개. Docker만 있으면 됨
+cd server && ./gradlew test        # Docker만 있으면 됨
 ```
 
 Testcontainers가 실제 MySQL을 띄우므로 `docker compose`를 따로 켜지 않아도 됩니다.

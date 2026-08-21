@@ -47,9 +47,12 @@ ADR 과 이 문서가 어긋나면 **ADR 이 맞다.** 어긋난 걸 발견하�
 ### 0-4. 검증 명령 — 모든 Phase 끝에 실행
 
 ```bash
-export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 cd server && ./gradlew test
 ```
+
+> `/usr/libexec/java_home -v 21` 은 이 기계에서 JDK 를 못 찾는다 (homebrew 설치라
+> 시스템 경로에 없다). `AGENTS.md` §실행과 같은 경로를 쓴다.
 
 `test` 뒤에 `verifyEndpointCoverage` 가 자동으로 이어 돈다 (`server/build.gradle.kts`).
 Docker 가 안 떠 있으면 Testcontainers 가 못 뜬다 —
@@ -96,7 +99,7 @@ Phase 4 (게이트) ──▶ Phase 5 (문서·주석)
 **Docker 가 없어 못 돌렸으면 "못 돌렸다"고 쓴다. 통과했다고 쓰지 않는다.**
 
 ```bash
-export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 cd server && ./gradlew test
 ```
 
@@ -177,7 +180,7 @@ DELETE FROM history;
 **테스트** `HistoryApiTest` — 응답 모양, 정렬, 재등록 시 행이 안 늘고 갱신,
 파라미터 누락 400
 
-**결과**: `endpoint-allowlist.txt` 에서 `HistoryController#saveHistory` 삭제 (6 → 5).
+**결과**: `endpoint-allowlist.txt` 에서 `HistoryController#saveHistory` 삭제 (5 → 4).
 
 ---
 
