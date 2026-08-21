@@ -96,28 +96,6 @@ class UserMonthlyScoreWriteTest : IntegrationTest() {
             .isEqualTo(2)
     }
 
-    @Test
-    @DisplayName("탈퇴한 유저는 재수집해도 점수 행이 되살아나지 않는다")
-    fun inactiveUserDoesNotGetScoreRowBack() {
-        val user = givenUser("ums-w-inactive")
-        givenGithubCommits(user, thisMonth(3))
-        commitService.fetchAndSaveCommits(user)
-        assertThat(thisMonthScore(user)).isEqualTo(3)
-
-        userService.deleteUser(user)
-        assertThat(thisMonthScore(user)).describedAs("탈퇴하면 행이 사라진다").isNull()
-
-        givenGithubCommits(user, thisMonth(5))
-        commitService.fetchAndSaveCommits(user)
-
-        assertThat(thisMonthScore(user))
-            .describedAs("랭킹 쿼리에 active 필터가 없으므로 여기서 안 막으면 재수집만으로 되살아난다")
-            .isNull()
-        assertThat(commitCount(user))
-            .describedAs("커밋 자체는 계속 쌓인다 — 막는 것은 랭킹 노출뿐이다")
-            .isEqualTo(5)
-    }
-
     // ── fixture ───────────────────────────────────────────────────────────────
 
     private fun givenUser(githubId: String): Long =

@@ -93,23 +93,6 @@ class UserMonthlyScoreRepositoryTest : IntegrationTest() {
     }
 
     @Test
-    @DisplayName("deleteAllByUserId 가 그 유저의 모든 달 점수를 지운다 — 비활성 유저를 랭킹에서 빼는 유일한 수단")
-    fun deleteAllByUserIdRemovesEveryMonth() {
-        val user = givenUser("ums-del", score = 4)
-        val other = givenUser("ums-del-other", score = 6)
-        val lastMonth = YearMonth.now(clock).minusMonths(1)
-        scoreRepository.save(UserMonthlyScore(user, lastMonth.toScoreMonth(), 9))
-
-        scoreRepository.deleteAllByUserId(user)
-
-        assertThat(scoreRepository.findScore(user, scoreMonth())).isNull()
-        assertThat(scoreRepository.findScore(user, lastMonth.toScoreMonth())).isNull()
-        assertThat(scoreRepository.findScore(other, scoreMonth()))
-            .describedAs("남의 점수는 건드리지 않는다")
-            .isEqualTo(6)
-    }
-
-    @Test
     @DisplayName("findTop 은 limit 만큼만 준다")
     fun findTopHonorsLimit() {
         (1..5).forEach { givenUser("ums-limit-$it", score = it) }

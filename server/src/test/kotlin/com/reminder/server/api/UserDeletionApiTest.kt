@@ -10,25 +10,26 @@ import org.springframework.jdbc.core.JdbcTemplate
 import java.time.LocalDateTime
 
 /**
- * 증명하는 주장: "DELETE /users/delete 한 사용자는 랭킹에서 사라진다" (불변조건 I5)
+ * 증명하는 주장: "DELETE /users/delete 한 사용자는 랭킹에서 사라진다"
  *
- * 이 테스트가 왜 따로 있나: 집계 테이블 쿼리에는 active 필터가 없다.
- * users 를 조인하면 옵티마이저가 idx_rank 를 버리고 users 를 풀스캔한다(50k 기준 87ms vs 0.5ms).
- * 그래서 비활성 유저를 빼는 일을 쿼리가 아니라 "탈퇴 시 점수 행 삭제"가 한다 —
- * 즉 I5 는 이제 쿼리가 아니라 불변조건이고, 그 불변조건을 지키는 건 이 테스트뿐이다.
+ * 이 테스트가 왜 따로 있나: 랭킹 쿼리는 users 를 조인하지 않는다. 조인하면 옵티마이저가
+ * idx_rank 를 버리고 users 를 풀스캔한다(50k 기준 87ms vs 0.5ms). 그래서 탈퇴자를 빼는 일을
+ * 쿼리가 아니라 user_monthly_score.user_id 의 ON DELETE CASCADE 가 한다.
+ * 그 CASCADE 가 실제로 도는지를 HTTP 로 확인하는 게 여기다 —
+ * 스키마 쪽 대조는 SchemaContractTest 가 따로 한다.
  *
  * 검증은 전부 HTTP 로 한다. fixture 만 SQL 로 넣는다 (ApiTest 규칙).
  */
-class UserDeactivationApiTest : ApiTest() {
+class UserDeletionApiTest : ApiTest() {
 
     @Autowired
     private lateinit var jdbc: JdbcTemplate
 
     @Test
     @DisplayName("탈퇴한 사용자는 Top30 에서 빠지고 남은 사람의 순위가 당겨진다")
-    fun deactivatedUserLeavesTheRanking() {
-        val staying = createUser("deact-staying")
-        val leaving = createUser("deact-leaving")
+    fun deletedUserLeavesTheRanking() {
+        val staying = createUser("del-staying")
+        val leaving = createUser("del-leaving")
         givenRankedCommits(staying, 2)
         givenRankedCommits(leaving, 5)
 
@@ -40,7 +41,7 @@ class UserDeactivationApiTest : ApiTest() {
 
         val body = get("/rank").body ?: error("본문이 비어 있다")
         assertThat(body)
-            .describedAs("탈퇴자가 남아 있으면 I5 가 깨진 것이다")
+            .describedAs("탈퇴자가 남아 있으면 점수 행이 CASCADE 로 안 지워진 것이다")
             .doesNotContain("\"userId\":$leaving")
         assertThat(body).contains("\"userId\":$staying")
 
@@ -50,8 +51,8 @@ class UserDeactivationApiTest : ApiTest() {
 
     @Test
     @DisplayName("탈퇴한 사용자의 개인 순위는 JSON null 이다")
-    fun deactivatedUserHasNoPersonalRank() {
-        val user = createUser("deact-solo")
+    fun deletedUserHasNoPersonalRank() {
+        val user = createUser("del-solo")
         givenRankedCommits(user, 3)
         assertThat(get("/rank/users?userId=$user").body).contains("\"rank\":1")
 
@@ -78,7 +79,7 @@ class UserDeactivationApiTest : ApiTest() {
                 "https://github.com/test/repo/commit/$userId-$i",
                 "테스트 커밋 $i",
                 "BRONZE",
-                "deact-sha-$userId-$i",
+                "del-sha-$userId-$i",
             )
         }
         jdbc.update(

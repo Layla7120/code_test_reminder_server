@@ -35,7 +35,6 @@ erDiagram
         varchar github_id UK "GitHub login"
         varchar nickname UK
         varchar repository_name
-        boolean active "소프트 삭제"
     }
     commits {
         bigint commit_id PK
@@ -81,8 +80,9 @@ erDiagram
 랭킹은 `user_monthly_score` **하나만** 읽는다. 예전에는 Redis ZSET 이 세 번째 사본이었고,
 그 사본들이 어긋나는 게 결함의 출처였다.
 
-`user_monthly_score` 에 **행이 있다 = 랭킹에 포함된다**. 그래서 랭킹 쿼리에 `active` 필터가
-없다 — 탈퇴 시 행을 지워서 읽기 경로에서 조인을 없앴다(5만 행 기준 87ms → 0.5ms).
+`user_monthly_score` 에 **행이 있다 = 랭킹에 포함된다**. 그래서 랭킹 쿼리는 `users` 를
+조인하지 않는다 — 탈퇴자는 FK 의 `ON DELETE CASCADE` 가 행을 지워서 빠진다
+(조인을 없앤 효과는 5만 행 기준 87ms → 0.5ms).
 
 ## 구조
 

@@ -46,7 +46,6 @@ class UserApiTest : ApiTest() {
             .contains("\"githubId\":\"fields-gh\"")
             .contains("\"nickname\":\"fields-nick\"")
             .contains("\"repositoryName\":\"fields-repo\"")
-            .contains("\"active\":true")
             .contains("createdAt")
     }
 
@@ -96,17 +95,17 @@ class UserApiTest : ApiTest() {
     }
 
     @Test
-    @DisplayName("탈퇴는 소프트 삭제 — active 가 false 가 되고 조회는 계속 된다")
-    fun deleteUserDeactivatesInsteadOfRemoving() {
+    @DisplayName("탈퇴는 물리 삭제 — 이후 조회는 404")
+    fun deleteUserRemovesTheRow() {
         val userId = createUser("delete-me")
 
         val res = delete("/users/delete?userId=$userId")
 
         assertThat(res.statusCode).isEqualTo(HttpStatus.NO_CONTENT)
 
-        val after = get("/users?userId=$userId")
-        assertThat(after.statusCode).isEqualTo(HttpStatus.OK)
-        assertThat(after.body).contains("\"active\":false")
+        assertThat(get("/users?userId=$userId").statusCode)
+            .describedAs("행이 남아 있으면 200 이 온다 — 소프트 삭제로 되돌아간 것이다")
+            .isEqualTo(HttpStatus.NOT_FOUND)
     }
 
     @Test
