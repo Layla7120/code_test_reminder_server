@@ -19,12 +19,14 @@ TRUNCATE TABLE user_monthly_score;
 TRUNCATE TABLE users;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- active = TRUE 여야 랭킹 쿼리(WHERE u.active = true)에 잡힌다
-INSERT INTO users (github_id, nickname, repository_name, active, created_at, updated_at)
+-- 예전에는 여기서 active = TRUE 를 넣었다. 랭킹 쿼리가 WHERE u.active = true 로
+-- 걸러내던 시절의 요구였는데, 그 컬럼도 그 조인도 없어졌다 (2026-08-21, ADR-0001).
+-- 지금은 user_monthly_score 에 행이 있는 것이 곧 랭킹 포함이다.
+INSERT INTO users (github_id, nickname, repository_name, created_at, updated_at)
 WITH RECURSIVE seq AS (
     SELECT 1 AS n UNION ALL SELECT n + 1 FROM seq WHERE n < @target_users
 )
-SELECT CONCAT('bench_gh_', n), CONCAT('bench_nick_', n), 'bench-repo', TRUE, NOW(6), NOW(6)
+SELECT CONCAT('bench_gh_', n), CONCAT('bench_nick_', n), 'bench-repo', NOW(6), NOW(6)
 FROM seq;
 
 -- 유저마다 커밋 수를 1~40건으로 다르게 준다.
