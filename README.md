@@ -60,10 +60,13 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 **서버**
 
 ```bash
+cp .env.example .env          # DB 접속 정보와 GITHUB_TOKEN 을 채운다
 docker compose up -d          # MySQL (스키마는 기동 시 Flyway 가 만든다)
-export DB_USER=reminder DB_PASSWORD=reminder DB_NAME=reminder GITHUB_TOKEN=...
 ./server/gradlew -p server bootRun    # http://localhost:8080 (웹 데모 포함)
 ```
+
+`bootRun` 이 저장소 루트의 `.env` 를 읽어 환경 변수로 넣는다 — `export` 를 따로 하지
+않는다. `.env` 는 `.gitignore` 에 있고, 키 목록은 `.env.example` 에 있다.
 
 인증은 없다(`permitAll`). `userId` 를 파라미터로 받는다 — 원본과 동일하며 범위에 넣지 않았다.
 
@@ -78,4 +81,10 @@ export DB_USER=reminder DB_PASSWORD=reminder DB_NAME=reminder GITHUB_TOKEN=...
 | API 명세 · 트러블슈팅 | [server/README.md](server/README.md)                               |
 | 성능 측정 **기록** | [bench/README.md](bench/README.md) — Redis 를 걷어낸 근거. 지금은 재현되지 않는다 |
 
-> 필요 없는 복잡도를 넣었고, 거기서 버그가 나왔고, 측정해보니 그 복잡도가 애초에 필요 없었다.
+이 저장소에서 넣었다가 도로 뺀 것들이다. 왜 뺐는지는 [docs/기록.md](docs/기록.md) 에 있다.
+
+| 넣은 것 | 뺀 때 | 무엇으로 대체했나 |
+|---|---|---|
+| Redis ZSET 랭킹 캐시 + 자가치유 스케줄러 | 2026-08-19 | `user_monthly_score` 집계 테이블. 랭킹의 사본이 셋에서 하나로 |
+| 커밋 수집 Redis 분산 락 | 2026-08-20 | 없앴다. `UNIQUE(user_id, sha)` + 절대값 재계산이라 연산이 이미 멱등이다 |
+| `users.active` 소프트 삭제 | 2026-08-21 | 물리 삭제 + FK `ON DELETE CASCADE` |
