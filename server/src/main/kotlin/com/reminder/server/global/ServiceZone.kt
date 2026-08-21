@@ -25,6 +25,9 @@ object ServiceZone {
 
     val ZONE: ZoneId = ZoneId.of("Asia/Seoul")
 
+    /** 지금을 UTC 벽시계로 — DATETIME 컬럼에 담는 값은 UTC 다 */
+    fun nowUtc(clock: Clock): LocalDateTime = LocalDateTime.now(clock.withZone(ZoneOffset.UTC))
+
     /** KST 벽시계 기준 오늘 */
     fun today(clock: Clock): LocalDate = LocalDate.now(clock.withZone(ZONE))
 

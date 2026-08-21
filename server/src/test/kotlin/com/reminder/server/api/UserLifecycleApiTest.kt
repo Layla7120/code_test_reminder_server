@@ -181,8 +181,8 @@ class UserLifecycleApiTest : ApiTest() {
 
     private fun givenHistory(userId: Long) {
         jdbc.update(
-            "INSERT INTO history (user_id, problem_num, solve_time) VALUES (?, ?, ?)",
-            userId, "1000", "10",
+            "INSERT INTO history (user_id, problem_num, solve_time, solved_at) VALUES (?, ?, ?, ?)",
+            userId, "1000", 600, LocalDateTime.now(),
         )
     }
 }

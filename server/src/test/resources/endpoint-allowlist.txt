@@ -7,13 +7,11 @@
 # 판정은 build/endpoint-audit.txt(EndpointAudit 계측)가 한다. 사람이 읽고 판단한 게
 # 아니라 테스트 실행 중 실제로 라우팅된 핸들러를 측정한 결과다.
 #
+# 2026-08-21 기준 4개 (HistoryController#saveHistory 는 HistoryApiTest 로 해소).
 # 2026-08-21 기준 5개 (CommitController#getLevelDistribution 는 CommitLevelApiTest 로 해소).
 # 2026-08-19 기준 6개 (CommitController#fetchAndSave 는 CommitFetchApiTest 로 해소).
 # 2026-08-02 기준 7개. 감사에서 심각도 중·하로 분류된 구간이다.
 # 우선순위가 높았던 group·user·rank 도메인은 전부 지웠다.
-
-# 심각도 중 — 예외→상태코드 매핑과 응답 모양이 미검증
-HistoryController#saveHistory    # 어느 계층에도 테스트 없음. 엔티티 직렬화 왕복
 
 # 심각도 하 — 읽기 전용, 인증 없음
 CommitController#getWeeklyActivity      # {dates:[...]} 모양, 없는 userId 동작

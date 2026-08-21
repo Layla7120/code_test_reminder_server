@@ -63,8 +63,9 @@ erDiagram
     history {
         bigint history_id PK
         bigint user_id FK
-        varchar problem_num
-        varchar solve_time "HH:MM:SS 문자열"
+        varchar problem_num "UNIQUE(user_id, problem_num) — 문제당 한 행"
+        int solve_time "초 단위"
+        datetime solved_at
     }
 ```
 
