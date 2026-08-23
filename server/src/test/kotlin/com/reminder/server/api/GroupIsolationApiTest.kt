@@ -9,10 +9,7 @@ import org.springframework.http.HttpStatus
 /**
  * GET /group/info — 격리.
  *
- * 기존 groupInfoReturnsAllJoinedGroups 는 "내 그룹이 다 나오는가"를 검증한다.
- * "남의 그룹이 안 나오는가"는 검증하지 않는다. 둘은 다른 명제다.
- * 전자만 있으면 findByUser 의 사용자 필터를 지워도 테스트가 통과한다 —
- * 오히려 그룹이 더 많이 나오므로 contains 단언은 여전히 성립한다.
+ * 기존 테스트는 "내 그룹이 다 나오는가"만 봤다 — 사용자 필터를 지워도 contains 단언은 통과한다. 경위: docs/기록.md
  *
  * 그 테스트가 사용자를 세 명 만든다는 점에 주의한다. "사용자를 한 명만 만드는
  * 테스트는 격리를 검증하지 못한다"는 판정은 맞지만, 역은 성립하지 않는다.

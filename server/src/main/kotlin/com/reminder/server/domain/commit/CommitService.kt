@@ -1,14 +1,13 @@
 package com.reminder.server.domain.commit
 
+import com.reminder.server.domain.rank.UserMonthlyScoreRepository
+import com.reminder.server.domain.rank.toScoreMonth
 import com.reminder.server.domain.user.UserRepository
-import com.reminder.server.global.exception.CommitFetchAlreadyInProgressException
+import com.reminder.server.global.ServiceZone
 import com.reminder.server.global.exception.UserNotFoundException
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
@@ -18,9 +17,8 @@ class CommitService(
     private val commitRepository: CommitRepository,
     private val commitJdbcRepository: CommitJdbcRepository,
     private val userRepository: UserRepository,
+    private val userMonthlyScoreRepository: UserMonthlyScoreRepository,
     private val githubClient: GithubClientPort,
-    private val redisTemplate: StringRedisTemplate,
-    private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
 ) {
     // ── 커밋 동기화 ───────────────────────────────────────────────────────────
@@ -30,60 +28,55 @@ class CommitService(
         val user = userRepository.findById(userId)
             .orElseThrow { UserNotFoundException(userId) }
 
-        // 동일 유저의 중복 페칭 요청을 Application 레벨에서 차단 (멱등성)
-        // SETNX 원자적 연산 → 분산 서버 환경에서도 안전
-        val lockKey = "commit:fetch:lock:$userId"
-        val acquired = redisTemplate.opsForValue()
-            .setIfAbsent(lockKey, "1", Duration.ofSeconds(30))
-        if (acquired != true) throw CommitFetchAlreadyInProgressException()
-
-        // 락 해제는 이 트랜잭션이 실제로 끝난 뒤(커밋이든 롤백이든)로 미룬다.
-        // try/finally로 여기서 바로 지우면 DB 커밋 "전에" 락이 풀려, 그 틈에 들어온
-        // 두 번째 요청이 아직 커밋 안 된 신규 커밋을 findExistingShas()에서 "없음"으로 보고
-        // GitHub을 중복 호출하고 랭킹도 중복 계상할 수 있다 (버그 A가 이 경로로 재발한다).
-        // 예외가 나도 이 이벤트는 이미 발행됐으므로 AFTER_COMPLETION에서 반드시 해제된다.
-        eventPublisher.publishEvent(CommitFetchLockReleaseEvent(lockKey))
+        // 중복 수집을 락으로 막지 않는다. 이 연산이 멱등이기 때문이다 —
+        // 삽입은 UNIQUE(user_id, sha) + ON DUPLICATE KEY UPDATE 이고 점수는 절대값
+        // 재계산이라, 같은 요청이 몇 번을 동시에 와도 결과가 같다.
 
         val rawCommits = githubClient.fetchCommits(user.githubId, user.repositoryName)
         val dtos = rawCommits.map { it.copy(userId = userId) }
 
-        // 실제로 새로 저장될 커밋만 랭킹에 반영한다.
-        // ON DUPLICATE KEY UPDATE는 이미 있는 sha를 조용히 건너뛰는데,
-        // dtos.size(요청 개수)를 그대로 증분으로 쓰면 같은 커밋을 재수집할 때마다
-        // 실제 삽입 없이 점수만 계속 오른다 (버그 A).
-        val existingShas = commitJdbcRepository.findExistingShas(dtos.map { it.sha })
+        // 실제로 새로 저장될 커밋만 랭킹에 반영한다 — 요청 개수를 그대로 더하면 재수집마다 점수가 부푼다 (버그 A). 경위: docs/기록.md
+        val existingShas = commitJdbcRepository.findExistingShas(userId, dtos.map { it.sha })
         val newCommits = dtos
             .distinctBy { it.sha }  // 같은 fetch 안의 sha 중복 방어 (정상 GitHub 응답에서는 없음)
             .filter { it.sha !in existingShas }
 
-        // sha 정렬 후 bulk upsert (InnoDB Next-Key Lock 순서 보장 → 데드락 방지)
         commitJdbcRepository.bulkUpsert(dtos)
 
-        // 월별로 나눠 발행 — 버킷은 서버의 "지금"이 아니라 커밋의 실제 날짜 기준.
-        // YearMonth.now(clock)을 쓰면 월초에 지난달 커밋을 수집할 때
-        // 이번달 ZSET에 잘못 가산되어 다음 달까지 정합성이 어긋난다.
+        // 방금 쓴 커밋을 같은 트랜잭션에서 다시 세어 절대값으로 덮어쓴다 — 이벤트도 AFTER_COMMIT 도 안 쓴다.
+        // newCommits 가 아니라 dtos 기준인 이유: 절대값이라 안 바뀐 달을 다시 써도 무해하고 이쪽이 안전하다.
         //
-        // DB 트랜잭션 커밋 후 Redis ZINCRBY 발행 (AFTER_COMMIT, 롤백 시 Redis 미반영)
-        newCommits
-            .groupingBy { YearMonth.from(it.commitDate) }
-            .eachCount()
-            .forEach { (yearMonth, count) ->
-                eventPublisher.publishEvent(CommitsSavedEvent(userId, count, yearMonth))
-            }
+        // 재계산할 달은 커밋의 실제 날짜 기준이다. YearMonth.now(clock) 을 쓰면 월초에
+        // 지난달 커밋을 수집할 때 엉뚱한 달을 다시 세게 된다.
+        dtos.map { ServiceZone.toKstMonth(it.commitDate) }
+            .distinct()
+            .forEach { yearMonth -> recomputeMonthlyScore(userId, yearMonth) }
 
         return newCommits.size
+    }
+
+    // 경계는 KST 로 잡고 UTC 로 바꿔서 넘긴다 — commit_date 가 UTC 이기 때문이다.
+    private fun recomputeMonthlyScore(userId: Long, yearMonth: YearMonth) {
+        userMonthlyScoreRepository.recompute(
+            userId,
+            yearMonth.toScoreMonth(),
+            ServiceZone.startOfMonthUtc(yearMonth),
+            ServiceZone.startOfMonthUtc(yearMonth.plusMonths(1)),
+        )
     }
 
     // ── 커밋 현황 조회 ────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     fun getWeeklyActivity(userId: Long): List<LocalDate> {
-        val now = LocalDateTime.now(clock)
-        val from = now.minusDays(6).toLocalDate().atStartOfDay()
-        val to = now.toLocalDate().atStartOfDay().plusDays(1)
+        val today = ServiceZone.today(clock)
 
-        return commitRepository.findCommitSummariesByUserAndDateRange(userId, from, to)
-            .map { it.getCommitDate().toLocalDate() }
+        return commitRepository.findCommitSummariesByUserAndDateRange(
+            userId,
+            ServiceZone.startOfDayUtc(today.minusDays(6)),
+            ServiceZone.startOfDayUtc(today.plusDays(1)),
+        )
+            .map { ServiceZone.toKstDate(it.getCommitDate()) }
             .distinct()
             .sorted()
     }
@@ -91,24 +84,25 @@ class CommitService(
     // 이번달 + 저번달 잔디 데이터
     @Transactional(readOnly = true)
     fun getCommitGrass(userId: Long): Map<String, Map<LocalDate, Long>> {
-        val now = LocalDateTime.now(clock)
-        val thisMonthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay()
-        val prevMonthStart = thisMonthStart.minusMonths(1)
+        val thisMonth = ServiceZone.currentMonth(clock)
+        val prevMonth = thisMonth.minusMonths(1)
 
-        val thisMonth = commitRepository
-            .findCommitSummariesByUserAndDateRange(userId, thisMonthStart, thisMonthStart.plusMonths(1))
-            .groupingBy { it.getCommitDate().toLocalDate() }
-            .eachCount()
-            .mapValues { it.value.toLong() }
-
-        val prevMonth = commitRepository
-            .findCommitSummariesByUserAndDateRange(userId, prevMonthStart, thisMonthStart)
-            .groupingBy { it.getCommitDate().toLocalDate() }
-            .eachCount()
-            .mapValues { it.value.toLong() }
-
-        return mapOf("thisMonth" to thisMonth, "prevMonth" to prevMonth)
+        return mapOf(
+            "thisMonth" to countByKstDate(userId, thisMonth),
+            "prevMonth" to countByKstDate(userId, prevMonth),
+        )
     }
+
+    // 조회 범위는 UTC 로, 묶는 키는 KST 날짜로. 둘을 섞으면 새벽 커밋이 하루 전 칸에 찍힌다.
+    private fun countByKstDate(userId: Long, month: YearMonth): Map<LocalDate, Long> =
+        commitRepository.findCommitSummariesByUserAndDateRange(
+            userId,
+            ServiceZone.startOfMonthUtc(month),
+            ServiceZone.startOfMonthUtc(month.plusMonths(1)),
+        )
+            .groupingBy { ServiceZone.toKstDate(it.getCommitDate()) }
+            .eachCount()
+            .mapValues { it.value.toLong() }
 
     @Transactional(readOnly = true)
     fun getLevelDistribution(userId: Long): Map<String, Long> =

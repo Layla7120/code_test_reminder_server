@@ -26,17 +26,9 @@ class User(
     @Column(name = "user_id")
     val id: Long = 0
 
-    @Column(nullable = false)
-    var active: Boolean = true
-        protected set
-
     // setter 직접 노출 대신 의도가 드러나는 메서드로 상태 변경 통제
     fun updateProfile(nickname: String, repositoryName: String) {
         this.nickname = nickname
         this.repositoryName = repositoryName
-    }
-
-    fun deactivate() {
-        this.active = false
     }
 }

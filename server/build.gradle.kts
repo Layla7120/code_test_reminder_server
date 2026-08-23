@@ -21,22 +21,28 @@ repositories {
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
+
+	// Flask 의 flask-smorest 가 하던 API 문서화를 되돌린 것이다 — 신규 도입이 아니라 복구다.
+	// Spring Boot BOM 이 관리하지 않는 서드파티라 버전을 직접 적는다 (3.1.0 부터 Boot 4 지원).
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
+
+	// flyway-core 로 바꾸지 말 것 — Boot 4 는 자동설정이 별도 모듈이라 마이그레이션이 안 돈다.
+	implementation("org.springframework.boot:spring-boot-flyway")
+	implementation("org.flywaydb:flyway-mysql")
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-data-redis-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-	// 테스트는 실제 MySQL·Redis 컨테이너에서 돈다.
-	// H2/임베디드 Redis를 쓰면 검증 대상(InnoDB row lock, Redis Lua 원자성)이 사라진다.
+	// 테스트는 실제 MySQL 컨테이너에서 돈다.
+	// H2 를 쓰면 검증 대상(InnoDB row lock)이 사라진다.
 	// Testcontainers 2.x 는 모듈명이 testcontainers-* 로 바뀌었다 (1.x: junit-jupiter, mysql)
 	// 버전은 Spring Boot 4.0.4 BOM 이 관리한다 (현재 2.0.4)
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
@@ -79,9 +85,7 @@ val verifyEndpointCoverage by tasks.registering {
 			return@doLast
 		}
 
-		// 식별자 자체가 '#' 를 포함한다(Controller#method). 그래서 '#' 를 인라인 주석
-		// 구분자로 쓰면 안 된다 — substringBefore('#') 는 이름을 통째로 잘라먹는다.
-		// 줄 전체가 주석인 경우만 걸러내고, 식별자는 첫 공백까지로 끊는다.
+		// substringBefore('#') 로 바꾸지 말 것 — 식별자가 '#' 를 포함한다(Controller#method).
 		val allowFile = file("src/test/resources/endpoint-allowlist.txt")
 		val allowed = if (allowFile.exists()) {
 			allowFile.readLines()
@@ -126,12 +130,7 @@ val verifyEndpointCoverage by tasks.registering {
 tasks.withType<Test> {
 	useJUnitPlatform()
 
-	// 테스트 컨테이너가 운영과 "같은" 스키마를 쓰도록 infra/init.sql 경로를 넘긴다.
-	// 복사본을 두면 두 파일이 어긋나므로 원본을 그대로 참조한다.
-	systemProperty(
-		"schema.init.sql",
-		project.rootDir.parentFile.resolve("infra/init.sql").absolutePath,
-	)
+	// 스키마는 운영과 같은 Flyway 마이그레이션 체인이 만든다 — init.sql 마운트가 필요 없어졌다.
 
 	finalizedBy(verifyEndpointCoverage)
 }

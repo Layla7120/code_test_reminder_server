@@ -3,6 +3,7 @@ package com.reminder.server.domain.group
 import com.reminder.server.domain.commit.CommitRepository
 import com.reminder.server.domain.commit.MemberCommitProjection
 import com.reminder.server.domain.user.UserRepository
+import com.reminder.server.global.ServiceZone
 import com.reminder.server.global.exception.*
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
@@ -37,10 +38,7 @@ class GroupService(
         if (updated == 0) throw GroupFullException()
         participateRepository.save(Participate(group, owner))
 
-        // incrementMemberCounterIfNotFull은 @Modifying 벌크 UPDATE라 DB는 바뀌지만
-        // Hibernate가 세터를 거치지 않아 위 group 객체의 memberCounter는 여전히 0이다.
-        // 그대로 반환하면 응답의 memberCount가 항상 0으로 나간다. clearAutomatically가
-        // 걸려있어 이 재조회는 1차 캐시가 아니라 DB에서 정확한 값을 다시 읽어온다.
+        // 벌크 UPDATE는 위 group 객체의 memberCounter를 갱신하지 않는다 — 재조회 없이 반환하면 응답이 0이다. 경위: docs/기록.md
         return groupRepository.findById(group.id).orElseThrow { GroupNotFoundException(group.id) }
     }
 
@@ -141,10 +139,14 @@ class GroupService(
     fun isGroupNameAvailable(groupName: String): Boolean =
         !groupRepository.existsByGroupName(groupName.trim())
 
+    // KST 로 달을 잡고 UTC 로 바꿔서 넘긴다 — commit_date 가 UTC 다. 경위: global/ServiceZone
     private fun dateRanges(): Triple<LocalDateTime, LocalDateTime, LocalDateTime> {
-        val now = LocalDateTime.now(clock)
-        val thisMonthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay()
-        return Triple(thisMonthStart, thisMonthStart.plusMonths(1), thisMonthStart.minusMonths(1))
+        val thisMonth = ServiceZone.currentMonth(clock)
+        return Triple(
+            ServiceZone.startOfMonthUtc(thisMonth),
+            ServiceZone.startOfMonthUtc(thisMonth.plusMonths(1)),
+            ServiceZone.startOfMonthUtc(thisMonth.minusMonths(1)),
+        )
     }
 }
 

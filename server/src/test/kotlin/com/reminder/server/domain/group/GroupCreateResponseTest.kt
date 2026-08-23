@@ -11,10 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired
 /**
  * 증명하는 주장: "그룹 생성 응답의 memberCount가 실제 값(1)을 반영한다"
  *
- * incrementMemberCounterIfNotFull()은 @Modifying 벌크 UPDATE라 DB는 직접 바꾸지만
- * Hibernate가 세터를 거치지 않으므로 createGroup()이 들고 있던 group 객체의
- * memberCounter 필드는 그대로 0에 머문다. 그 group을 그대로 반환하면
- * POST /group 응답의 memberCount가 항상 0으로 나간다 — 생성자 본인이 참여했는데도.
+ * 벌크 UPDATE 는 createGroup 이 들고 있던 group 객체를 갱신하지 않아 응답의 memberCount 가 0으로 나갔다. 경위: docs/기록.md
  */
 class GroupCreateResponseTest : IntegrationTest() {
 

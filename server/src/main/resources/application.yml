@@ -23,18 +23,24 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
 
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-
-  cache:
-    type: redis
-    redis:
-      time-to-live: 60000         # 60초 (Flask CACHE_TIMEOUT 동일)
+  flyway:
+    # 스키마의 진실 원천: db/migration (규칙은 PLAN-db-foundation.md §3).
+    # baseline-on-migrate: flyway_schema_history 가 없는 기존 DB(구 init.sql 로 만든 볼륨)를
+    # "V1 과 같다"고 선언하고 V1 을 건너뛴다. 선언일 뿐 검증이 아니다 —
+    # 컬럼 수준 검증은 위 ddl-auto: validate 가 한다 (Flyway 실행 후 JPA 가 뜬다).
+    # 빈 DB 에는 V1 부터 전부 적용한다.
+    baseline-on-migrate: true
 
 server:
   port: ${PORT:8080}
 
 github:
   token: ${GITHUB_TOKEN}
+
+# 주소를 Flask 시절과 같게 맞춘다 (app/__init__.py 의 OPENAPI_URL_PREFIX=/docs +
+# OPENAPI_SWAGGER_UI_PATH=/swagger-ui → /docs/swagger-ui). 복구가 목적이라 경로도 그대로 둔다.
+springdoc:
+  api-docs:
+    path: /docs/openapi.json
+  swagger-ui:
+    path: /docs/swagger-ui

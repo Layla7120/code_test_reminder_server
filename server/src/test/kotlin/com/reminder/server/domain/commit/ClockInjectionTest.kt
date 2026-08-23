@@ -2,6 +2,7 @@ package com.reminder.server.domain.commit
 
 import com.reminder.server.domain.user.User
 import com.reminder.server.domain.user.UserRepository
+import com.reminder.server.global.ServiceZone
 import com.reminder.server.support.IntegrationTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -12,7 +13,9 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import java.time.Clock
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.YearMonth
 import java.time.ZoneId
 
 // 8월 1일 자정 — 월 경계 바로 앞뒤 커밋을 만들기 위한 기준 시각
@@ -26,8 +29,12 @@ private val FIXED_NOW: LocalDateTime = LocalDateTime.of(2026, 8, 1, 0, 0, 0)
  * 재현 가능하게 만든 것이었는데, 정작 이걸 실제로 확인하는 테스트가 없었다.
  *
  * ClockConfig의 운영 Clock(Clock.system(...))을 이 테스트에서만 Clock.fixed(...)로 교체하고,
- * 월 경계 바로 앞뒤(7월 31일 23:59:59 / 8월 1일 00:00:00)에 커밋을 심어
- * getCommitGrass()가 실제로 "지금"을 이 고정 시각 기준으로 계산하는지 확인한다.
+ * KST 월 경계 바로 앞뒤에 커밋을 심어 getCommitGrass()가 실제로 "지금"을 이 고정 시각
+ * 기준으로 계산하는지 확인한다.
+ *
+ * commit_date 는 UTC 로 저장한다(global/ServiceZone). 그래서 "KST 7월 31일 23:59:59"를
+ * 심으려면 UTC 14:59:59 를 넣어야 한다 — 이 변환을 fixture 가 직접 하지 않고 ServiceZone 을
+ * 거치게 두면 정책이 바뀔 때 테스트도 같이 따라간다.
  */
 @Import(FixedClockConfig::class)
 class ClockInjectionTest : IntegrationTest() {
@@ -41,18 +48,19 @@ class ClockInjectionTest : IntegrationTest() {
     fun commitsAreBucketedByTheFixedClockNotRealTime() {
         val user = userRepository.save(User("clock-test", "clock-nick", "repo"))
 
-        val lastSecondOfJuly = FIXED_NOW.minusSeconds(1)   // 2026-07-31T23:59:59 → 저번달
-        val firstSecondOfAugust = FIXED_NOW                // 2026-08-01T00:00:00 → 이번달
+        // KST 기준 경계 앞뒤 1초. 저장은 UTC 라 9시간 당겨서 심는다.
+        val firstSecondOfAugustKst = ServiceZone.startOfMonthUtc(YearMonth.of(2026, 8))
+        val lastSecondOfJulyKst = firstSecondOfAugustKst.minusSeconds(1)
 
         commitJdbcRepository.bulkUpsert(listOf(
-            commitDto(user.id, lastSecondOfJuly, "sha-prev-month"),
-            commitDto(user.id, firstSecondOfAugust, "sha-this-month"),
+            commitDto(user.id, lastSecondOfJulyKst, "sha-prev-month"),
+            commitDto(user.id, firstSecondOfAugustKst, "sha-this-month"),
         ))
 
         val grass = commitService.getCommitGrass(user.id)
 
-        assertThat(grass.getValue("thisMonth")).containsKey(firstSecondOfAugust.toLocalDate())
-        assertThat(grass.getValue("prevMonth")).containsKey(lastSecondOfJuly.toLocalDate())
+        assertThat(grass.getValue("thisMonth")).containsKey(LocalDate.of(2026, 8, 1))
+        assertThat(grass.getValue("prevMonth")).containsKey(LocalDate.of(2026, 7, 31))
     }
 
     private fun commitDto(userId: Long, date: LocalDateTime, sha: String) = CommitInsertDto(

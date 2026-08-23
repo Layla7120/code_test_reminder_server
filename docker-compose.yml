@@ -10,24 +10,15 @@ services:
     ports:
       - "3306:3306"
     volumes:
+      # 스키마는 앱 기동 시 Flyway 가 만든다 (server/src/main/resources/db/migration).
+      # init.sql 마운트를 지운 이유: 볼륨 최초 생성 때만 실행되어 이후 스키마 변경이
+      # 조용히 누락됐다 — PLAN-db-foundation.md Phase 0.
       - mysql-data:/var/lib/mysql
-      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 5s
       timeout: 3s
       retries: 10
-
-  redis:
-    image: redis:7-alpine
-    container_name: reminder-redis
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
 volumes:
   mysql-data:

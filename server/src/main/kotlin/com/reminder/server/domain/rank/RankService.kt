@@ -1,80 +1,49 @@
 package com.reminder.server.domain.rank
 
-import com.reminder.server.domain.commit.CommitRepository
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.dao.DataAccessException
+import com.reminder.server.global.ServiceZone
+import org.springframework.data.domain.Limit
 import org.springframework.stereotype.Service
 import java.time.Clock
-import java.time.LocalDateTime
-import java.time.YearMonth
 
+/**
+ * 랭킹 조회. 진실 원천은 user_monthly_score 하나다.
+ *
+ * 경로가 하나라 폴백이라는 개념이 없다. 폴백은 "경로가 둘"이라서 필요했던 것이고,
+ * 그 둘이 어긋나 있던 게 51abeb7 이었다.
+ *
+ * @Transactional 을 붙이지 않는다 — JpaRepository 메서드는 자체 트랜잭션이 있다.
+ */
 @Service
 class RankService(
-    private val rankingRedisRepository: RankingRedisRepository,
-    private val commitRepository: CommitRepository,
+    private val userMonthlyScoreRepository: UserMonthlyScoreRepository,
     private val clock: Clock,
-    // false면 Redis를 건너뛰고 항상 DB 경로로 랭킹을 계산한다.
-    // 별도 구현이 아니라 아래 "Redis 장애 폴백"과 똑같은 경로를 강제로 태우는 스위치다.
-    // 목적: Redis 오프로딩의 효과를 규모별로 재는 A/B 측정에서 변수 하나만 바꾸기 위함.
-    //       동시에 "Redis가 죽으면 얼마나 느려지는가"에 대한 답도 이 스위치로 잰다.
-    @Value("\${ranking.redis.enabled:true}") private val redisRankingEnabled: Boolean = true,
 ) {
-    fun getTop30(): List<RankEntry> {
-        if (!redisRankingEnabled) return getTop30FromDb()
+    // 정렬·LIMIT 은 idx_rank(score_month, score DESC) 가 그대로 처리한다.
+    // 동순위 계산만 앱에서 한다 — SQL 의 DENSE_RANK 는 전체 집계를 필요로 하는데,
+    // 여기서는 이미 집계된 30행만 있으면 된다.
+    fun getTop30(): List<RankEntry> =
+        userMonthlyScoreRepository.findTop(scoreMonth(), Limit.of(TOP_N))
+            .map { it.userId to it.score.toLong() }
+            .toDenseRankEntries()
 
-        return try {
-            val entries = rankingRedisRepository.getTop30(YearMonth.now(clock))
-            // Redis가 비어있으면 (초기 기동 등) DB에서 폴백
-            if (entries.isNotEmpty()) entries else getTop30FromDb()
-        } catch (e: DataAccessException) {
-            // Redis 장애(연결 끊김, 타임아웃 등) 시 DB 폴백 — 성능 저하 감수, 가용성 우선
-            // RedisConnectionFailureException만 잡던 이전 버전은 QueryTimeoutException 같은
-            // 타임아웃 계열을 못 잡아 그대로 500이 나갔다. 둘 다 DataAccessException의 하위 타입.
-            getTop30FromDb()
-        }
-    }
-
+    /**
+     * dense rank = 나보다 높은 점수의 "종류" 수 + 1.
+     *
+     * 한 쿼리로 묶지 않고 두 단계로 나눈다 — null 의 의미를 구분하기 위해서다.
+     * 행이 없으면(= 랭킹 대상이 아니면) null 이고, 그건 0 등과 다르다.
+     */
     fun getUserRank(userId: Long): Long? {
-        if (!redisRankingEnabled) return getUserRankFromDb(userId)
-
-        val yearMonth = YearMonth.now(clock)
-        return try {
-            rankingRedisRepository.getUserDenseRank(userId, yearMonth)
-            // null 이 두 가지를 뜻한다는 게 문제였다.
-            //   (1) 랭킹이 아직 안 채워짐(초기 기동, 스케줄러 미실행) → DB 폴백해야 함
-            //   (2) 채워져 있는데 이 유저만 점수가 없음 → 이번 달 커밋이 없는 것
-            // 둘을 구분하지 않아, getTop30 은 DB 폴백으로 1등을 보여주는데
-            // 같은 유저의 개인 순위는 null 이 나가는 상태가 있었다.
-                ?: if (rankingRedisRepository.isEmpty(yearMonth)) getUserRankFromDb(userId) else null
-        } catch (e: DataAccessException) {
-            getUserRankFromDb(userId)
-        }
+        val scoreMonth = scoreMonth()
+        val myScore = userMonthlyScoreRepository.findScore(userId, scoreMonth) ?: return null
+        // 커밋 0 건인 유저는 랭킹에 없다 (I4). findTop 의 score > 0 과 같은 규칙이다.
+        if (myScore <= 0) return null
+        return userMonthlyScoreRepository.countHigherDistinctScores(scoreMonth, myScore) + 1
     }
 
-    // ── DB 폴백 (Redis 장애 또는 초기 기동 시) ────────────────────────────────
-    //
-    // private 메서드에는 @Transactional을 붙이지 않는다. Spring AOP 프록시는
-    // "외부에서 프록시를 거쳐 들어오는 호출"만 가로채는데, 여기는 같은 클래스 안의
-    // self-invocation(getTop30() → getTop30FromDb())이라 프록시를 안 거친다.
-    // 게다가 private 메서드는 애초에 오버라이드가 불가능해 프록시 대상도 될 수 없다.
-    // (JpaRepository의 각 메서드는 자체적으로 이미 트랜잭션이 걸려 있어 없어도 안전하다)
+    // KST 기준 이번 달. 쓰는 쪽(CommitService.recomputeMonthlyScore)과 같은 기준이어야 한다.
+    private fun scoreMonth(): String = ServiceZone.currentMonth(clock).toScoreMonth()
 
-    private fun getTop30FromDb(): List<RankEntry> {
-        val (thisMonthStart, nextMonthStart, _) = dateRanges()
-        return commitRepository.findTop30Rank(thisMonthStart, nextMonthStart)
-            .map { RankEntry(it.getUserId(), it.getCurrentMonthCount(), it.getRank()) }
-    }
-
-    private fun getUserRankFromDb(userId: Long): Long? {
-        val (thisMonthStart, nextMonthStart, _) = dateRanges()
-        return commitRepository.findUserRank(userId, thisMonthStart, nextMonthStart)?.getRank()
-    }
-
-    private fun dateRanges(): Triple<LocalDateTime, LocalDateTime, LocalDateTime> {
-        val now = LocalDateTime.now(clock)
-        val thisMonthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay()
-        val nextMonthStart = thisMonthStart.plusMonths(1)
-        val prevMonthStart = thisMonthStart.minusMonths(1)
-        return Triple(thisMonthStart, nextMonthStart, prevMonthStart)
+    companion object {
+        private const val TOP_N = 30
     }
 }

@@ -11,11 +11,10 @@ data class UserResponse(
     val githubId: String,
     val nickname: String,
     val repositoryName: String,
-    val active: Boolean,
     val createdAt: LocalDateTime,
 )
 
-fun User.toResponse() = UserResponse(id, githubId, nickname, repositoryName, active, createdAt)
+fun User.toResponse() = UserResponse(id, githubId, nickname, repositoryName, createdAt)
 
 @RestController
 @RequestMapping("/users")

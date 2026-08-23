@@ -7,8 +7,6 @@ import org.springframework.data.repository.query.Param
 
 interface GroupRepository : JpaRepository<Group, Long> {
 
-    fun findByGroupName(groupName: String): Group?
-
     fun existsByGroupName(groupName: String): Boolean
 
     // 원자적 증가: DB 레벨에서 조건 확인 + 증가를 단일 연산으로 처리
@@ -21,10 +19,7 @@ interface GroupRepository : JpaRepository<Group, Long> {
     // COUNT 조회 후 INSERT: 두 요청이 동시에 count=4 확인 후 둘 다 삽입 가능
     // WHERE counter < max: 조건이 false면 UPDATE 자체가 실패 → 원자적 방어
     //
-    // flushAutomatically = true: 이 UPDATE를 날리기 전에 영속성 컨텍스트에 아직
-    // 플러시되지 않은 변경(예: 같은 트랜잭션에서 방금 호출한 derived delete)을 먼저 DB에
-    // 반영한다. 이게 없으면 대기 중인 변경이 있는 상태로 clearAutomatically가 실행됐을 때
-    // 그 변경이 DB에 한 번도 쓰이지 못한 채 통째로 버려질 수 있다.
+    // flushAutomatically = true: 대기 중인 변경을 먼저 반영한다 — 빠뜨리면 clearAutomatically가 그걸 버린다. 경위: docs/기록.md
     //
     // clearAutomatically = true: 이 UPDATE 이후 같은 트랜잭션에서 Group을 다시 조회하면
     // 영속성 컨텍스트 캐시가 아니라 DB에서 새로 읽어온다. 없으면 먼저 로딩해둔 Group

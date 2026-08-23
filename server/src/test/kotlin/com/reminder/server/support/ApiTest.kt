@@ -15,9 +15,8 @@ import org.springframework.web.client.RestTemplate
  * 실제 HTTP 요청으로 엔드포인트를 호출하는 테스트의 베이스.
  *
  * [왜 필요했나]
- * 기존 테스트 35개는 전부 서비스를 직접 호출했다(groupService.joinGroup(...)).
- * DB·Redis는 실제로 띄웠지만 **웹 계층은 통째로 빠져 있었다.**
- * 그래서 이 계층에만 사는 것들이 전부 미검증으로 남았다:
+ * 기존 테스트 35개가 전부 서비스를 직접 호출해 웹 계층이 통째로 미검증이었다. 경위: docs/기록.md
+ * 이 계층에만 사는 것들:
  *
  *   요청 역직렬화 / @Valid 검증 / 예외→상태코드 매핑 / 응답 본문과 Content-Type
  *
@@ -38,10 +37,8 @@ abstract class ApiTest : IntegrationTest() {
     // 4xx/5xx 에서 예외를 던지지 않도록 기본 에러 핸들러를 끈다.
     // 상태코드 자체가 검증 대상이기 때문이다.
     //
-    // 요청 팩토리를 JDK HttpClient 로 바꾼다. 기본값(SimpleClientHttpRequestFactory)은
-    // HttpURLConnection 을 쓰는데 PATCH 를 지원하지 않아 "Invalid HTTP method: PATCH" 로
-    // 요청이 나가기도 전에 터진다. 아래 patch() 헬퍼는 원래부터 있었지만 이걸 호출하는
-    // 테스트가 없어서 동작하지 않는다는 사실이 드러나지 않았다.
+    // 요청 팩토리를 JDK HttpClient 로 바꾼다 — 기본값(HttpURLConnection)이 PATCH 를 거부해
+    // patch() 헬퍼가 내내 깨져 있었다. 경위: docs/기록.md
     private val rest: RestTemplate by lazy {
         RestTemplate(JdkClientHttpRequestFactory()).apply {
             errorHandler = object : org.springframework.web.client.ResponseErrorHandler {

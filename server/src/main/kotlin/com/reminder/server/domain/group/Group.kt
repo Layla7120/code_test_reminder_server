@@ -39,10 +39,7 @@ class Group(
     // participations.size → LAZY 컬렉션 전체 로딩 → OOM
     // COUNT 쿼리 + INSERT → TOCTOU 레이스 컨디션 (check-then-act 비원자적)
     //
-    // [현재 접근]
-    // DB 레벨 원자적 UPDATE: member_counter = member_counter + 1 WHERE counter < max
-    // 조건 확인과 증가가 단일 연산 → Lost Update 없음, 엔티티 로딩 없음
-    // 반환값 0 = 정원 초과, 1 = 성공 → 별도 조회 불필요
+    // 증감은 GroupRepository 의 원자적 UPDATE 에서만 — 조건 확인과 증가가 단일 연산. 경위: docs/기록.md
     @Column(nullable = false)
     var memberCounter: Int = 0
         protected set

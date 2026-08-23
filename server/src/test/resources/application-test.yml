@@ -9,7 +9,7 @@ spring:
     hibernate:
       # 운영과 동일하게 validate 유지.
       # create-drop 을 쓰면 Hibernate 가 만든 스키마를 검증하게 되어
-      # 정작 확인하려는 infra/init.sql 이 테스트 대상에서 빠진다.
+      # 정작 확인하려는 Flyway 마이그레이션이 테스트 대상에서 빠진다.
       ddl-auto: validate
     show-sql: false
     properties:
